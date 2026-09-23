@@ -1,4 +1,4 @@
-import { describe } from './settings.js';
+import { describe, clearSignInSessions } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 let status = {};
@@ -15,19 +15,17 @@ async function render() {
   $('grant').hidden = status.state !== 'active' || status.hasAccess;
   $('enabled').checked = status.enabled ?? true;
   $('enabled').disabled = managed.includes('enabled');
-  $('pause').hidden = !status.allowPause || !['active', 'paused'].includes(status.state);
-  $('pauseHint').hidden = $('pause').hidden || paused;
-  for (const b of document.querySelectorAll('[data-minutes]')) b.hidden = paused;
+  const canPause = status.allowPause && ['active', 'paused'].includes(status.state);
+  $('pause').hidden = !canPause || paused;
+  $('pauseHint').hidden = !canPause || paused;
   $('resume').hidden = !paused;
   $('managed').hidden = !managed.length;
 }
 
 $('enabled').addEventListener('change', (e) => chrome.storage.local.set({ enabled: e.target.checked }));
-for (const button of document.querySelectorAll('[data-minutes]')) {
-  button.addEventListener('click', () =>
-    chrome.storage.local.set({ pausedUntil: Date.now() + Number(button.dataset.minutes) * 60_000 }));
-}
+$('pause').addEventListener('click', () => chrome.storage.local.set({ pausedUntil: Date.now() + 15 * 60_000 }));
 $('resume').addEventListener('click', () => chrome.storage.local.set({ pausedUntil: 0 }));
+$('clearSessions').addEventListener('click', () => clearSignInSessions().then(() => window.close()));
 $('grant').addEventListener('click', () => chrome.permissions.request({ origins: status.origins }));
 $('settings').addEventListener('click', (e) => {
   e.preventDefault();

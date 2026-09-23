@@ -12,6 +12,7 @@ Report it privately with **Report a vulnerability** on this repository's Securit
 - The extension never sees sign-in requests or page content. Edge applies its `declarativeNetRequest` rules, which only add `login_hint` to sign-in requests on `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`. The rules can't change the host, path or any other site.
 - It fails closed. It removes its rules and leaves sign-ins alone when it's off or paused, when the profile has no account, when the account is personal or outside `allowedDomains`, when the work-or-school check hasn't succeeded, or when anything fails.
 - It never runs in InPrivate windows (`"incognito": "not_allowed"`).
+- **Clear sign-in sessions** only opens Microsoft's sign-out page in a new tab (`chrome.tabs.create`, no extra permission). The extension can't read or delete cookies.
 
 ## Permissions
 

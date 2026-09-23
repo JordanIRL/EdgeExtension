@@ -21,8 +21,8 @@ Use My Profile Account makes Microsoft 365, Azure, SharePoint and other Microsof
 
 It's built for people with more than one work account on the same PC. Give each account its own Edge profile, and each profile signs in as itself.
 
-• Adds your profile's account as the sign-in hint on Microsoft's sign-in pages, and leaves sites that already chose an account alone.
-• Skip or show the account picker, exclude sites, and pause for 15 minutes or an hour when you need another account.
+• Adds your profile's account as the sign-in hint on Microsoft's sign-in pages, even when a site asks for a different account (or keep the site's choice).
+• Clear old sign-in sessions with one click, skip or show the account picker, exclude sites, and pause for 15 minutes when you need another account.
 • Does nothing for personal Microsoft accounts and never runs in InPrivate windows.
 • No telemetry. The extension can't read pages; only your account's domain is checked to confirm it's a work or school account.
 • Administrators can enforce settings and limit it to their domains with Edge policy.

@@ -39,8 +39,11 @@ run('v1 tenant authorize gets login_hint', {}, V1, has(HINT));
 run('common endpoint', {}, 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=x', has(HINT));
 run('empty login_hint replaced in place (no duplicate)', {}, `${V2}&login_hint=&state=abc`,
   (u) => u === `${V2}&${HINT}&state=abc` && count(u, 'login_hint') === 1);
-run('existing hint kept', {}, `${V2}&login_hint=bob%40example.com`, 'same');
-run('existing username kept', {}, `${V2}&username=bob%40example.com`, 'same');
+check('default is to use the profile account', DEFAULTS.hintMode === 'always');
+run('default replaces a site hint for another account', {}, `${V2}&login_hint=bob%40example.com`,
+  (u) => u === `${V2}&${HINT}`);
+run('keep mode: existing hint kept', { hintMode: 'missing' }, `${V2}&login_hint=bob%40example.com`, 'same');
+run('keep mode: existing username kept', { hintMode: 'missing' }, `${V2}&username=bob%40example.com`, 'same');
 run('always mode replaces other hint', { hintMode: 'always' }, `${V2}&login_hint=bob%40example.com`,
   (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
 run('always mode, already ours: no redirect', { hintMode: 'always' }, `${V2}&${HINT}`, 'same');
@@ -51,7 +54,7 @@ run('sid kept in always mode', { hintMode: 'always' }, `${V2}&sid=abc123`, 'same
 run('id_token_hint kept', {}, `${V2}&id_token_hint=eyJ0`, 'same');
 run('encoded login%5Fhint left alone', {}, `${V2}&login%5Fhint=`, 'same');
 run('encoded login%5Fhint left alone (always)', { hintMode: 'always' }, `${V2}&login%5fhint=bob`, 'same');
-run('keys are case-insensitive for the guard', {}, `${V2}&LOGIN_HINT=bob`, 'same');
+run('keep mode: keys are case-insensitive for the guard', { hintMode: 'missing' }, `${V2}&LOGIN_HINT=bob`, 'same');
 run('sign-up (prompt=create) left alone', {}, `${V2}&prompt=create`, 'same');
 run('prompt=login still hinted', {}, `${V2}&prompt=login`, has(HINT, 'prompt=login'));
 run('prompt=none (silent) hinted', {}, `${V2}&prompt=none`, has(HINT, 'prompt=none'));
@@ -62,7 +65,7 @@ run('select_account removed and hinted', {}, OWA,
   (u) => u === `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&state=x&${HINT}`);
 run('select_account as last param', {}, `${V2}&prompt=select_account`, (u) => u === `${V2}&${HINT}`);
 run('select_account kept when set to show picker', { accountPicker: 'site' }, OWA, 'same');
-run('select_account with site hint kept', {}, `${OWA}&login_hint=bob%40example.com`, 'same');
+run('keep mode: select_account with site hint kept', { hintMode: 'missing' }, `${OWA}&login_hint=bob%40example.com`, 'same');
 run('select_account + empty hint', {}, `${OWA}&login_hint=`, (u) => !u.includes('prompt=') && count(u, 'login_hint') === 1 && u.includes(HINT));
 run('select_account in always mode', { hintMode: 'always' }, `${OWA}&login_hint=bob`, (u) => !u.includes('prompt=') && u.includes(HINT) && !u.includes('bob'));
 run('other prompt value untouched', {}, `${V2}&prompt=consent`, has(HINT, 'prompt=consent'));
@@ -111,7 +114,9 @@ run('always mode keeps an app username in hidden frames', { hintMode: 'always' }
 const SAML = 'https://login.microsoftonline.com/0c8f0000-aaaa-bbbb-cccc-000000000000/saml2';
 run('SAML redirect binding', {}, `${SAML}?SAMLRequest=fZJb&RelayState=x`, has(HINT, 'SAMLRequest=fZJb'));
 run('SAML POST binding gets query', {}, SAML, (u) => u === `${SAML}?${HINT}`, { method: 'post' });
-run('WS-Fed with hint kept', {}, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`, 'same');
+run('keep mode: WS-Fed with hint kept', { hintMode: 'missing' }, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`, 'same');
+run('default: WS-Fed hint replaced', {}, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`,
+  (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
 
 run('other clouds untouched', {}, 'https://login.microsoftonline.us/common/oauth2/v2.0/authorize?client_id=x', 'same');
 
@@ -147,7 +152,7 @@ run('not excluded: longer TLD', EX, withRedirect('https://dev.azure.company/'), 
 }
 
 // --- Rule shape (an invalid rule rejects the whole update) ---
-for (const settings of [{}, { hintMode: 'always', accountPicker: 'site', includeFrames: false }, EX,
+for (const settings of [{}, { hintMode: 'missing', accountPicker: 'site', includeFrames: false }, { ...EX, hintMode: 'missing' },
   { ...EX, hintMode: 'always', accountPicker: 'site' }]) {
   const rules = rulesFor(settings);
   const ids = rules.map((r) => r.id);

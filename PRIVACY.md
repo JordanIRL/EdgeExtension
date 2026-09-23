@@ -13,6 +13,7 @@ Use My Profile Account is a Microsoft Edge extension. It has no servers, no anal
 
 - **Microsoft sign-in requests.** Your email is added as the sign-in hint (`login_hint`) to sign-in requests your browser is already making to `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`. That includes background sign-ins in hidden frames unless they're turned off. Microsoft uses the hint to choose the account, as if you'd typed it.
 - **Account-type check.** To confirm the account is a work or school account, the extension sends only your email's domain, as `user@<your domain>`, to `https://login.microsoftonline.com/common/userrealm/`, without cookies. It asks again only when your account's domain changes. If your organization limits the extension to its own domains (`allowedDomains`), no check is made.
+- **Clear sign-in sessions** opens Microsoft's sign-out page (`https://login.microsoftonline.com/common/oauth2/v2.0/logout`) in a new tab, only when you click it. The extension adds nothing to that request.
 - Nothing is sent anywhere else. The extension doesn't read pages, cookies or what you type, and it doesn't see the sign-in requests themselves: Edge applies its rules.
 
 ## What's stored, and for how long
@@ -28,7 +29,7 @@ The extension never runs in InPrivate windows.
 ## Your choices
 
 - The popup and Settings page show which account is used.
-- You can turn the extension off, pause it or exclude sites from the popup and Settings page, or remove it on `edge://extensions`.
+- You can turn the extension off, pause it, exclude sites or clear sign-in sessions from the popup and Settings page, or remove it on `edge://extensions`.
 - If your organization manages the extension, it can turn it on for you and hide or lock these controls.
 
 ## Contact

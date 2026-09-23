@@ -7,7 +7,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy]
 "enabled"=dword:00000001
-"hintMode"="missing"
+"hintMode"="always"
 "accountPicker"="skip"
 "includeFrames"=dword:00000001
 "allowPause"=dword:00000001

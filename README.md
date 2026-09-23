@@ -12,7 +12,7 @@ On an Entra-joined Windows 11 PC where bob@example.com signs in to Windows:
 Install the extension in every profile you want this in (a force-installed extension is in every profile). Each copy uses its own profile's account.
 
 <p align="center">
-  <img src="docs/images/popup.png" width="330" alt="The extension's popup: Signing in as mary@example.com, with an on/off switch and Pause buttons">
+  <img src="docs/images/popup.png" width="330" alt="The extension's popup: Signing in as mary@example.com, with an on/off switch, a Pause button and a Clear sign-in sessions button">
   &nbsp;
   <img src="docs/images/popup-dark.png" width="330" alt="The same popup in dark mode">
 </p>
@@ -25,7 +25,8 @@ Microsoft's sign-in service chooses the account from the `login_hint` parameter 
 
 The rules are careful about what they change:
 
-- **Kept as the site sent it:** requests where the site already chose an account (`login_hint`, `username`, `sid`, `id_token_hint`), sign-up requests (`prompt=create`), and anything that isn't the start of a sign-in.
+- **Replaced:** a `login_hint` or `username` that names a different account, so a site you signed in to with another account switches back to the profile's account at its next sign-in. Choose *Keep the site's choice* to keep them instead.
+- **Kept as the site sent it:** requests that name a session with `sid` or `id_token_hint` (Microsoft rejects `sid` combined with a hint), background renewals in hidden frames that already name an account (so a page never gets another account's tokens mid-session), sign-up requests (`prompt=create`), and anything that isn't the start of a sign-in.
 - **Filled in:** an *empty* `login_hint=` is filled in where it stands, never added a second time. The Azure, Entra and Intune portals send an empty one, which is what broke the older [UseMyCurrentAccount](https://github.com/novotnyllc/UseMyCurrentAccount) extension in 2025, and Microsoft rejects a duplicated hint.
 - **Covered:** OAuth / OpenID Connect (`/oauth2/authorize`, `/oauth2/v2.0/authorize`), SAML (`/saml2`, including POST binding) and WS-Federation (`/wsfed`) on `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`.
 - **Work or school accounts only.** If a profile uses a personal Microsoft account (outlook.com, gmail.com, icloud.com and similar), the extension does nothing in that profile. To tell, it sends only the email's domain (as `user@<domain>`, without cookies) to Microsoft's `userrealm` lookup and remembers the answer for that domain. Until that check succeeds (for example while offline) it does nothing. If an administrator sets `allowedDomains`, those domains count as work domains and no lookup is made.
@@ -64,7 +65,8 @@ For security review, see [SECURITY.md](SECURITY.md). For data handling, see [PRI
 Click the toolbar icon to see which account is being used. From there you can:
 
 - **Turn it on or off** for this profile.
-- **Pause for 15 minutes or 1 hour** when you need to sign in with a different account. Apps that remember the account you picked keep using it. Other sites go back to the profile account the next time they sign you in, so add sites you always use with a different account (for example a customer's SharePoint) to **Excluded sites**.
+- **Pause for 15 minutes** when you need to sign in with a different account. Afterwards, sites go back to the profile account the next time they send you to Microsoft's sign-in page, so add sites you always use with a different account (for example a customer's SharePoint) to **Excluded sites**.
+- **Clear sign-in sessions** to sign out of Microsoft sign-in in this profile, and out of sites that support single sign-out, so they sign in again with the profile's account. Use it when a site is still signed in with another account. It opens Microsoft's sign-out page (`https://login.microsoftonline.com/common/oauth2/v2.0/logout`); if several accounts are signed in, Microsoft asks which one to sign out. Your Edge profile stays signed in. Sites that don't support single sign-out keep their own session until it ends or you sign out of them.
 - **Open Settings.**
 
 The icon shows the state:
@@ -77,7 +79,7 @@ The icon shows the state:
 
 | Setting | Default | What it does |
 |---|---|---|
-| When a site already asks for a specific account | Keep the site's choice | **Always use this profile's account** replaces a hint the site sent for a different account (background renewals in hidden frames keep the site's hint). |
+| When a site already asks for a specific account | Use this profile's account instead | Replaces a hint the site sent for a different account. Background renewals in hidden frames keep the site's hint. **Keep the site's choice** leaves every hint a site sends alone. |
 | When a site asks you to pick an account | Skip the picker | Some sites (for example Outlook on the web) always ask for the account picker. Choose **Show the account picker** to respect that. |
 | Background sign-ins in hidden frames | On | Also applies to the silent sign-ins apps run in the background. |
 | Excluded sites | none | Sign-ins that start from or return to these sites are left alone, for example `dev.azure.com`. |
@@ -89,11 +91,11 @@ Settings can be enforced for every profile on a device. Enforced settings are lo
 | Policy | Type | Values |
 |---|---|---|
 | `enabled` | boolean | Turns the extension on or off. Users can't change it. |
-| `hintMode` | string | `missing` (keep a site's choice) or `always` |
+| `hintMode` | string | `always` (use the profile's account instead; default) or `missing` (keep a site's choice) |
 | `accountPicker` | string | `skip` or `site` |
 | `includeFrames` | boolean | Include background sign-ins in hidden frames |
 | `excludedSites` | list of strings | Replaces the user's excluded sites |
-| `allowPause` | boolean | Show the Pause buttons (default `true`) |
+| `allowPause` | boolean | Show the Pause button (default `true`) |
 | `allowedDomains` | list of strings | Only act for accounts in these domains, for example `contoso.com` (subdomains included; `@contoso.com` also works). The extension then makes no account-type lookup. Entries that aren't valid domains match nothing, so a list with no valid entry turns the extension off. |
 
 Values live under

@@ -1,4 +1,4 @@
-import { loadSettings, cleanHosts } from './settings.js';
+import { loadSettings, cleanHosts, clearSignInSessions } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const save = (values) => chrome.storage.local.set(values);
@@ -38,6 +38,17 @@ $('excludedSites').addEventListener('change', (e) => {
   $('sitesError').textContent = `Not a site name: ${invalid.join(', ')}`;
   save({ excludedSites: valid });
 });
+
+$('clearSessions').addEventListener('click', clearSignInSessions);
+
+// Pages can't open edge:// addresses from a link, so open them in a new tab.
+$('extensionDetails').href = `edge://extensions/?id=${chrome.runtime.id}`;
+for (const a of document.querySelectorAll('a[href^="edge:"]')) {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: a.href });
+  });
+}
 
 // 'change' only fires when the list loses focus, so save a half-edited list if the tab is closed.
 addEventListener('pagehide', () => document.activeElement === $('excludedSites') &&

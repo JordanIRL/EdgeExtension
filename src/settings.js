@@ -4,11 +4,16 @@
 
 export const DEFAULTS = {
   enabled: true,
-  hintMode: 'missing',      // missing = only when the site didn't name an account; always = replace it
+  hintMode: 'always',       // always = use this profile's account even if the site named another; missing = keep the site's
   accountPicker: 'skip',    // skip = sign straight in; site = show the picker when the site asks for it
   includeFrames: true,      // also hidden-frame (silent) sign-ins
   excludedSites: [],
 };
+
+// Microsoft's sign-out page. It ends the Microsoft sign-in sessions in this Edge profile and signs out of sites
+// that support single sign-out. Edge's own sign-in to the profile isn't affected.
+export const SIGN_OUT_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/logout';
+export const clearSignInSessions = () => chrome.tabs.create({ url: SIGN_OUT_URL });
 
 // Only settable by policy.
 const POLICY_DEFAULTS = { allowPause: true, allowedDomains: [] };

@@ -8,7 +8,7 @@
     },
     "hintMode": {
       "title": "When a site already asks for a specific account",
-      "description": "missing = keep the site's choice (default). always = replace it with the profile account.",
+      "description": "always = use the profile account instead (default). missing = keep the site's choice.",
       "type": "string",
       "enum": [
         "missing",
@@ -39,7 +39,7 @@
     },
     "allowPause": {
       "title": "Allow users to pause",
-      "description": "Shows the Pause buttons that let a user sign in with a different account for a while. Default: true.",
+      "description": "Shows the Pause button that lets a user sign in with a different account for 15 minutes. Default: true.",
       "type": "boolean"
     },
     "allowedDomains": {

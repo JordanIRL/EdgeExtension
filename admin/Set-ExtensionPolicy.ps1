@@ -20,7 +20,7 @@ $Remove = $false
 
 $Policy = [ordered]@{
   # enabled         = $true
-  # hintMode        = 'missing'          # 'missing' (keep a site's choice) or 'always'
+  # hintMode        = 'always'           # 'always' (use the profile's account) or 'missing' (keep a site's choice)
   # accountPicker   = 'skip'             # 'skip' (sign straight in) or 'site' (show the picker)
   # includeFrames   = $true
   # allowPause      = $true

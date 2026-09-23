@@ -24,14 +24,19 @@
       <span class="label">Edge profile account</span>
       <span id="profileEmail">–</span>
     </div>
+    <div class="field">
+      <span class="label">Sign-in sessions</span>
+      <p class="muted">Signs you out of Microsoft sign-in in this Edge profile, and out of sites that support it, so they sign in again with this profile’s account. Your Edge profile stays signed in. With several accounts signed in, Microsoft asks which to sign out.</p>
+      <div><button id="clearSessions">Clear sign-in sessions</button></div>
+    </div>
   </section>
 
   <section class="card">
     <h2>Sign-in behavior</h2>
     <fieldset id="hintMode">
       <legend>When a site already asks for a specific account</legend>
-      <label class="choice"><input type="radio" name="hintMode" value="missing"> Keep the site’s choice <span class="muted">(recommended)</span></label>
-      <label class="choice"><input type="radio" name="hintMode" value="always"> Always use this profile’s account instead</label>
+      <label class="choice"><input type="radio" name="hintMode" value="always"> Use this profile’s account instead <span class="muted">(recommended)</span></label>
+      <label class="choice"><input type="radio" name="hintMode" value="missing"> Keep the site’s choice</label>
     </fieldset>
     <fieldset id="accountPicker">
       <legend>When a site asks you to pick an account</legend>
@@ -51,10 +56,10 @@
   <section class="card">
     <h2>Other settings that affect sign-in</h2>
     <ul class="tips">
-      <li><strong>Sign in to this Edge profile</strong> with your work or school account (Settings › Profiles). That’s the account this extension uses. It only chooses the account, so you may still be asked for a password or MFA.</li>
-      <li><strong>Which profile a site opens in.</strong> Automatic profile switching (Settings › Profiles), and <em>Profile preferences for sites</em> and <em>Default profile for external links</em> (Settings › Profiles › Profile preferences), can open a site in another profile. It then signs in with that profile’s account.</li>
+      <li><strong>Sign in to this Edge profile</strong> with your work or school account (<a href="edge://settings/profiles">Settings › Profiles</a>). That’s the account this extension uses. It only chooses the account, so you may still be asked for a password or MFA.</li>
+      <li><strong>Which profile a site opens in.</strong> Automatic profile switching (<a href="edge://settings/profiles">Settings › Profiles</a>), and <em>Profile preferences for sites</em> and <em>Default profile for external links</em> (<a href="edge://settings/profiles/multiProfileSettings">Settings › Profiles › Profile preferences</a>), can open a site in another profile. It then signs in with that profile’s account.</li>
       <li>You don’t need to add this account to Windows (Settings › Accounts › Access work or school) for this extension. Doing that registers this PC with the account’s organization and can enroll it in their device management.</li>
-      <li><strong>Site access</strong> (<code>edge://extensions</code> › Details) must allow Microsoft’s sign-in pages. The extension never runs in InPrivate windows.</li>
+      <li><strong>Site access</strong> (<a id="extensionDetails" href="edge://extensions">Extensions › Details</a>) must allow Microsoft’s sign-in pages. The extension never runs in InPrivate windows.</li>
     </ul>
   </section>
 </body>
