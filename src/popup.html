@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Use My Profile Account</title>
+  <link rel="stylesheet" href="ui.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body class="popup">
+  <header class="brand">
+    <img src="../icons/icon-32.png" alt="" width="24" height="24">
+    <h1>Use My Profile Account</h1>
+  </header>
+
+  <section id="status" class="status" data-state="" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    <div>
+      <strong id="headline">Starting…</strong>
+      <p id="detail" class="muted"></p>
+    </div>
+  </section>
+
+  <button id="grant" class="primary" hidden>Allow access to sign-in pages</button>
+
+  <label class="switch">
+    <span>Use this profile’s account to sign in</span>
+    <input id="enabled" type="checkbox" role="switch">
+  </label>
+
+  <div id="pause" class="buttons" hidden>
+    <button data-minutes="15">Pause 15 min</button>
+    <button data-minutes="60">Pause 1 hour</button>
+    <button id="resume" class="primary" hidden>Resume now</button>
+  </div>
+  <p id="pauseHint" class="muted small" hidden>Pause to sign in with a different account.</p>
+
+  <footer>
+    <a href="#" id="settings">Settings</a>
+    <span id="managed" class="muted small" hidden>Managed by your organization</span>
+  </footer>
+</body>
+</html>

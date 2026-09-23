@@ -1,0 +1,93 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --card: #f7f7f8;
+  --text: #1b1b1f;
+  --muted: #5f6368;
+  --line: #dcdce0;
+  --accent: #0f6cbd;
+  --accent-text: #ffffff;
+  --ok: #107c10;
+  --warn: #c75000;
+  --off: #8a8886;
+  --error: #c50f1f;
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1f1f1f;
+    --card: #2a2a2c;
+    --text: #f3f3f3;
+    --muted: #b3b3b3;
+    --line: #3d3d40;
+    --accent: #4ca0e8;
+    --accent-text: #0b1a2a;
+    --ok: #54b054;
+    --warn: #f7a24b;
+    --error: #ff8a8a;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+h1 { font-size: 15px; margin: 0; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
+p { margin: 0; }
+code { font-family: Consolas, ui-monospace, monospace; font-size: 12px; background: var(--card); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.error { color: var(--error); }
+[hidden] { display: none !important; }
+
+button, select, input[type="email"], textarea {
+  font: inherit; color: inherit; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+button { padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+input[type="email"], select, textarea { width: 100%; padding: 6px 8px; }
+textarea { resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 13px; }
+:disabled { opacity: .6; cursor: not-allowed; }
+
+.brand { display: flex; align-items: center; gap: 10px; }
+
+/* Popup */
+.popup { width: 330px; padding: 14px; display: grid; gap: 12px; }
+.status { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border-radius: 8px; padding: 10px 12px; }
+.status strong { display: block; word-break: break-word; }
+.status .dot { flex: none; width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--off); }
+.status[data-state="active"] .dot { background: var(--ok); }
+.status[data-state="warn"] .dot, .status[data-state="no-account"] .dot,
+.status[data-state="not-allowed"] .dot, .status[data-state="error"] .dot { background: var(--warn); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.switch input { appearance: none; flex: none; width: 36px; height: 20px; margin: 0; border-radius: 10px; background: var(--off); position: relative; cursor: pointer; transition: background .15s; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(16px); }
+.buttons { display: flex; gap: 8px; }
+.buttons button { flex: 1; }
+@media (forced-colors: active) {
+  .switch input { appearance: auto; width: auto; height: auto; }
+  .switch input::after { content: none; }
+}
+.popup footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Options page */
+.page { max-width: 680px; margin: 0 auto; padding: 28px 20px 40px; display: grid; gap: 16px; }
+.page h1 { font-size: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; }
+.field { display: grid; gap: 4px; }
+.label { font-weight: 600; }
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
+.choice { display: flex; gap: 8px; align-items: baseline; }
+.choice input { margin: 0; flex: none; transform: translateY(2px); }
+.note { background: var(--card); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 4px; }
+.locked { position: relative; }
+.locked::after { content: "Managed"; position: absolute; top: 0; right: 0; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.tips { margin: 0; padding-left: 18px; display: grid; gap: 8px; }

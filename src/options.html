@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Use My Profile Account – Settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body class="page">
+  <header class="brand">
+    <img src="../icons/icon-48.png" alt="" width="36" height="36">
+    <div>
+      <h1>Use My Profile Account</h1>
+      <p class="muted">Settings for this Edge profile. Changes save automatically.</p>
+    </div>
+  </header>
+
+  <p id="managedNote" class="note" hidden>Your organization manages some of these settings.</p>
+
+  <section class="card">
+    <h2>Account</h2>
+    <div class="field">
+      <span class="label">Edge profile account</span>
+      <span id="profileEmail">–</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Sign-in behavior</h2>
+    <fieldset id="hintMode">
+      <legend>When a site already asks for a specific account</legend>
+      <label class="choice"><input type="radio" name="hintMode" value="missing"> Keep the site’s choice <span class="muted">(recommended)</span></label>
+      <label class="choice"><input type="radio" name="hintMode" value="always"> Always use this profile’s account instead</label>
+    </fieldset>
+    <fieldset id="accountPicker">
+      <legend>When a site asks you to pick an account</legend>
+      <label class="choice"><input type="radio" name="accountPicker" value="skip"> Skip the picker and use this profile’s account <span class="muted">(recommended)</span></label>
+      <label class="choice"><input type="radio" name="accountPicker" value="site"> Show the account picker</label>
+    </fieldset>
+    <label class="choice"><input id="includeFrames" type="checkbox"> Also apply to background sign-ins that sites run in hidden frames</label>
+  </section>
+
+  <section class="card">
+    <h2>Excluded sites</h2>
+    <p class="muted">Sign-ins that start from or return to these sites are left alone. One per line, for example <code>dev.azure.com</code>. Subdomains are included.</p>
+    <textarea id="excludedSites" rows="4" spellcheck="false" aria-label="Excluded sites"></textarea>
+    <span id="sitesError" class="error small" role="alert" hidden></span>
+  </section>
+
+  <section class="card">
+    <h2>Edge settings that also matter</h2>
+    <ul class="tips">
+      <li><strong>Automatic profile switching</strong> (<code>edge://settings/profiles/multiProfileSettings</code>) can move a Microsoft site into another profile before this extension runs. Turn it off, or set those sites to stay in the current profile.</li>
+      <li>For sign-in without a password prompt, the account should also be added to Windows under <strong>Settings › Accounts › Access work or school</strong>.</li>
+      <li>This extension picks the account, but apps that sign in through Windows directly (not the sign-in page) aren’t affected.</li>
+    </ul>
+  </section>
+</body>
+</html>

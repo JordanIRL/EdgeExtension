@@ -1,0 +1,19 @@
+Windows Registry Editor Version 5.00
+
+; Example Edge extension policy for "Use My Profile Account".
+; Replace REPLACE_WITH_EXTENSION_ID with the ID from edge://extensions, delete what you don't want enforced,
+; import, then open edge://policy and click "Reload policies". The two lists at the end are commented out
+; examples: remove the leading semicolons to use them. allowedDomains stops the extension for every other domain.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy]
+"enabled"=dword:00000001
+"hintMode"="missing"
+"accountPicker"="skip"
+"includeFrames"=dword:00000001
+"allowPause"=dword:00000001
+
+;[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy\excludedSites]
+;"1"="dev.azure.com"
+
+;[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy\allowedDomains]
+;"1"="contoso.com"
