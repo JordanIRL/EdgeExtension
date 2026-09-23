@@ -40,7 +40,7 @@ async function doSync() {
   await publish({
     state, enabled: settings.enabled, email, pausedUntil,
     hasAccess: await chrome.permissions.contains({ origins: ORIGINS }),
-    origins: ORIGINS, allowPause: settings.allowPause, allowedDomains: settings.allowedDomains, managed,
+    origins: ORIGINS, allowPause: settings.allowPause, managed,
   });
 }
 

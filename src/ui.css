@@ -40,18 +40,17 @@ a { color: var(--accent); }
 .error { color: var(--error); }
 [hidden] { display: none !important; }
 
-button, select, input[type="email"], textarea {
+button, textarea {
   font: inherit; color: inherit; background: var(--bg);
   border: 1px solid var(--line); border-radius: 6px;
 }
 button { padding: 6px 12px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
-input[type="email"], select, textarea { width: 100%; padding: 6px 8px; }
-textarea { resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 12.5px; }
+textarea { width: 100%; padding: 6px 8px; resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 12.5px; }
 :disabled { opacity: .6; cursor: not-allowed; }
 
 .brand { display: flex; align-items: center; gap: 10px; }

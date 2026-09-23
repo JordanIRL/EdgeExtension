@@ -27,11 +27,10 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // settings: effective settings plus the resolved work-account `email`.
 // Regex rules are matched case-insensitively (the DNR default).
 export function buildRules(s) {
-  const requestDomains = ENTRA_HOSTS;
   const resourceTypes = s.includeFrames ? ['main_frame', 'sub_frame'] : ['main_frame'];
   const rules = [];
   const add = (priority, action, condition) =>
-    rules.push({ id: rules.length + 1, priority, action, condition: { requestDomains, resourceTypes, ...condition } });
+    rules.push({ id: rules.length + 1, priority, action, condition: { requestDomains: ENTRA_HOSTS, resourceTypes, ...condition } });
   const allow = (condition) => add(ALLOW, { type: 'allow' }, condition);
   // Chromium URL-encodes the value itself, and replaces an existing (even empty) login_hint in place.
   const hint = (removeParams) => ({

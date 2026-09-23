@@ -1,5 +1,5 @@
 // Settings shared by the service worker, popup and options page.
-// Local settings belong to this Edge profile. An administrator can enforce most of them
+// Local settings belong to this Edge profile. An administrator can enforce any of them
 // with policy (see schema.json); enforced values win and are shown as locked in the UI.
 
 export const DEFAULTS = {

@@ -1,5 +1,5 @@
 // A small model of Chromium's declarativeNetRequest matching, for the subset of features rules.js uses:
-// - rules without resourceTypes never match main_frame; conditions are ANDed
+// - rules must list resourceTypes; conditions are ANDed
 // - requestDomains / initiatorDomains include subdomains; no initiator never matches initiatorDomains
 // - regexFilter is case-insensitive by default
 // - the highest (priority, action) wins, with allow > redirect at equal priority
@@ -10,14 +10,16 @@ const hostOf = (url) => (/^[a-z]+:\/\/([^/:?#]+)/i.exec(url) || [])[1]?.toLowerC
 const domainMatch = (host, list) => list.some((d) => host === d || host.endsWith(`.${d}`));
 const RANK = { allow: 5, allowAllRequests: 4, block: 3, upgradeScheme: 2, redirect: 1, modifyHeaders: 0 };
 
+const MODELLED = new Set(['resourceTypes', 'requestMethods', 'requestDomains', 'initiatorDomains', 'regexFilter']);
+
 function matches(rule, req) {
   const c = rule.condition;
-  if (c.urlFilter) throw new Error('urlFilter is not modelled; use regexFilter');
+  const other = Object.keys(c).filter((k) => !MODELLED.has(k));
+  if (other.length) throw new Error(`condition keys not modelled here: ${other.join(', ')}`);
   if (!(c.resourceTypes ?? []).includes(req.type)) return false;
   if (c.requestMethods && !c.requestMethods.includes(req.method)) return false;
   if (c.requestDomains && !domainMatch(hostOf(req.url), c.requestDomains)) return false;
   if (c.initiatorDomains && !(req.initiator && domainMatch(hostOf(req.initiator), c.initiatorDomains))) return false;
-  if (c.excludedInitiatorDomains && req.initiator && domainMatch(hostOf(req.initiator), c.excludedInitiatorDomains)) return false;
   if (c.regexFilter && !new RegExp(c.regexFilter, 'i').test(req.url)) return false;
   return true;
 }
@@ -44,12 +46,12 @@ function transformQuery(url, { removeParams = [], addOrReplaceParams = [] }) {
       out.push(part);
     }
   }
-  for (const p of pending) if (!p.replaceOnly) out.push(`${encode(p.key)}=${encode(p.value)}`);
+  for (const p of pending) out.push(`${encode(p.key)}=${encode(p.value)}`);
   return `${base}${out.length ? `?${out.join('&')}` : ''}${hash}`;
 }
 
 // Returns the matching rule (or null) and the redirect target (or null) for one request.
-export function evaluate(rules, req) {
+function evaluate(rules, req) {
   let best = null;
   for (const rule of rules) {
     if (!matches(rule, req)) continue;
