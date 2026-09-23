@@ -44,6 +44,8 @@ run('existing username kept', {}, `${V2}&username=bob%40example.com`, 'same');
 run('always mode replaces other hint', { hintMode: 'always' }, `${V2}&login_hint=bob%40example.com`,
   (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
 run('always mode, already ours: no redirect', { hintMode: 'always' }, `${V2}&${HINT}`, 'same');
+run('always mode replaces username', { hintMode: 'always' }, `${V2}&username=bob%40example.com`,
+  (u) => u === `${V2}&${HINT}`);
 run('sid kept (sid + login_hint is AADSTS90005)', {}, `${V2}&sid=abc123`, 'same');
 run('sid kept in always mode', { hintMode: 'always' }, `${V2}&sid=abc123`, 'same');
 run('id_token_hint kept', {}, `${V2}&id_token_hint=eyJ0`, 'same');
@@ -64,6 +66,8 @@ run('select_account with site hint kept', {}, `${OWA}&login_hint=bob%40example.c
 run('select_account + empty hint', {}, `${OWA}&login_hint=`, (u) => !u.includes('prompt=') && count(u, 'login_hint') === 1 && u.includes(HINT));
 run('select_account in always mode', { hintMode: 'always' }, `${OWA}&login_hint=bob`, (u) => !u.includes('prompt=') && u.includes(HINT) && !u.includes('bob'));
 run('other prompt value untouched', {}, `${V2}&prompt=consent`, has(HINT, 'prompt=consent'));
+run('prompt with several values kept (never drops prompt=login)', {}, `${V2}&prompt=login+select_account`,
+  has(HINT, 'prompt=login+select_account'));
 
 // --- Personal-account sign-ins in a work profile are left alone ---
 const CONSUMER_OWA = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&redirect_uri=https%3A%2F%2Foutlook.live.com%2Fmail%2F&prompt=select_account';
@@ -73,6 +77,11 @@ run('work Outlook still hinted', {}, OWA.replace('client_id=9199bf20', 'client_i
 run('domain_hint=consumers untouched', {}, `${V2}&domain_hint=consumers`, 'same');
 run('domain_hint=organizations still hinted', {}, `${V2}&domain_hint=organizations`, has(HINT));
 run('look-alike live.com host still hinted', {}, `${V2}&redirect_uri=https%3A%2F%2Fnotlive.com%2F`, has(HINT));
+run('live.com in a path still hinted', {}, `${V2}&redirect_uri=https%3A%2F%2Fcontoso.com%2Fdocs.live.com%2Fauth`, has(HINT));
+const MSA_PORTAL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=81feaced&redirect_uri=https%3A%2F%2Faccount.microsoft.com%2Fauth%2Fcomplete-signin-oauth&prompt=login&msaoauth2=true';
+run('Microsoft account site (account.microsoft.com) untouched', {}, MSA_PORTAL, 'same');
+run('work account portal (myaccount.microsoft.com) still hinted', {},
+  MSA_PORTAL.replace('account.microsoft.com', 'myaccount.microsoft.com'), has(HINT));
 
 // --- Hosts and paths ---
 run('login.windows.net alias', {}, 'https://login.windows.net/common/oauth2/authorize?client_id=x', has(HINT));
@@ -96,6 +105,7 @@ run('hidden frame hinted by default', {}, `${V2}&prompt=none`, has(HINT), { type
 run('hidden frame skipped when off', { includeFrames: false }, `${V2}&prompt=none`, 'same', { type: 'sub_frame' });
 run('always mode keeps an app hint in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&login_hint=bob`, 'same', { type: 'sub_frame' });
 run('always mode still fills an empty hint in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&login_hint=`, has(HINT), { type: 'sub_frame' });
+run('always mode keeps an app username in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&username=bob`, 'same', { type: 'sub_frame' });
 
 // --- SAML / WS-Fed ---
 const SAML = 'https://login.microsoftonline.com/0c8f0000-aaaa-bbbb-cccc-000000000000/saml2';
@@ -116,6 +126,8 @@ run('excluded by initiator', EX, V2, 'same', { initiator: 'https://contoso.share
 run('excluded by initiator subdomain', { excludedSites: ['azure.com'] }, V2, 'same', { initiator: 'https://portal.azure.com' });
 run('not excluded: other site', EX, withRedirect('https://portal.azure.com/'), has(HINT), { initiator: 'https://portal.azure.com' });
 run('not excluded: look-alike host', EX, withRedirect('https://dev.azure.com.evil.test/'), has(HINT));
+run('not excluded: excluded host in the path', EX, withRedirect('https://evil.test/x.dev.azure.com/cb'), has(HINT));
+run('not excluded: excluded host in an unencoded path', EX, `${V2}&redirect_uri=https://evil.test/x.dev.azure.com/cb`, has(HINT));
 run('not excluded: typed URL', EX, V2, has(HINT));
 run('excluded by unencoded redirect_uri', EX, `${V2}&redirect_uri=https://dev.azure.com/cb`, 'same');
 run('excluded by WS-Fed wreply', EX, 'https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&wreply=https%3a%2f%2fcontoso.sharepoint.com%2f_trust%2f', 'same');
@@ -171,7 +183,7 @@ check('cleanHost rejects', ['localhost', 'a b.com', 'contoso', '', '.com'].every
 check('cleanHosts tolerates non-arrays', cleanHosts('dev.azure.com').valid.length === 0);
 
 // A long excluded host, to check the per-rule regex size limit in the RE2 step (longer ones are dropped at runtime).
-rulesFor({ excludedSites: [`${'a'.repeat(25)}.${'b'.repeat(24)}.example.com`] }); // 63 characters
+rulesFor({ excludedSites: [`${'a'.repeat(25)}.${'b'.repeat(22)}.example.com`] }); // 60 characters
 
 log(`\n${passed} passed, ${failed} failed`);
 for (const r of regexes) log(`REGEX ${r}`);

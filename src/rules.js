@@ -13,7 +13,10 @@ export const ENTRA_HOSTS = ['login.microsoftonline.com', 'login.microsoft.com', 
 // Tenant path segments that only accept personal Microsoft accounts; left alone.
 const MSA_TENANTS = 'consumers|9188040d-6c67-4c5b-b112-36a304b66dad';
 // Matches a sign-in that returns to (redirect_uri, redirect%5Furi, wreply) the given host pattern or a subdomain.
-const returnsTo = (host) => `(uri|wreply)=https?(:|%3a)(/|%2f)(/|%2f)([^&]*\\.)?${host}([/:?&#%]|$)`;
+// The subdomain part only allows host name characters, so a path such as /x.live.com/ doesn't match.
+const returnsTo = (host) => `(uri|wreply)=https?(:|%3a)(/|%2f)(/|%2f)([-a-z0-9.]*\\.)?${host}([/:?&#%]|$)`;
+// Personal-account sites that sign in through the work-account endpoints (/common).
+const CONSUMER_SITES = '(live\\.com|account\\.microsoft\\.com)';
 const MAX_SITE_RULES = 900; // Edge allows 1000 regex rules in total
 
 const ALLOW = 10;       // allow rules beat every redirect
@@ -33,10 +36,14 @@ export function buildRules(s) {
     rules.push({ id: rules.length + 1, priority, action, condition: { requestDomains: ENTRA_HOSTS, resourceTypes, ...condition } });
   const allow = (condition) => add(ALLOW, { type: 'allow' }, condition);
   // Chromium URL-encodes the value itself, and replaces an existing (even empty) login_hint in place.
-  const hint = (removeParams) => ({
-    type: 'redirect',
-    redirect: { transform: { queryTransform: { ...(removeParams && { removeParams }), addOrReplaceParams: [{ key: 'login_hint', value: s.email }] } } },
-  });
+  // In "always" mode a site's username hint is replaced too, so Microsoft gets only one account.
+  const hint = (removeParams = []) => {
+    if (s.hintMode === 'always') removeParams = [...removeParams, 'username'];
+    return {
+      type: 'redirect',
+      redirect: { transform: { queryTransform: { ...(removeParams.length && { removeParams }), addOrReplaceParams: [{ key: 'login_hint', value: s.email }] } } },
+    };
+  };
 
   // Leave the request alone if the site already chose an account (sid + login_hint is an error)...
   const chosen = ['sid', 'id_token_hint', ...(s.hintMode === 'always' ? [] : ['login_hint', 'username'])];
@@ -45,13 +52,13 @@ export function buildRules(s) {
   allow({ regexFilter: '[?&](login%5fhint|prompt=create)' });
   if (s.accountPicker === 'site') allow({ regexFilter: '[?&]prompt=select_account' });
   // Keep an app's own hint in hidden-frame renewals, even in "always" mode, so an app never switches user silently.
-  if (s.hintMode === 'always') allow({ regexFilter: '[?&]login_hint=[^&#]', resourceTypes: ['sub_frame'] });
+  if (s.hintMode === 'always') allow({ regexFilter: '[?&](login_hint|username)=[^&#]', resourceTypes: ['sub_frame'] });
   // Personal-account sign-ins: personal-only endpoints, requests asking for a personal account, and
   // consumer sites such as outlook.live.com (which use /common with prompt=select_account).
   allow({ regexFilter: `^https://[^/]+/(${MSA_TENANTS})/` });
-  allow({ regexFilter: `[?&]domain_hint=consumers(&|#|$)|${returnsTo('live\\.com')}` });
+  allow({ regexFilter: `[?&]domain_hint=consumers(&|#|$)|${returnsTo(CONSUMER_SITES)}` });
   // Excluded sites: match where the sign-in returns to and the page that started it. One rule per site keeps
-  // each regex under Edge's 2 KB compiled-size limit, which fits host names up to about 63 characters;
+  // each regex under Edge's 2 KB compiled-size limit, which fits host names up to about 60 characters;
   // background.js drops longer ones and the initiator rule still covers them.
   for (const site of s.excludedSites.slice(0, MAX_SITE_RULES)) allow({ regexFilter: returnsTo(escapeRegex(site)) });
   if (s.excludedSites.length) allow({ initiatorDomains: s.excludedSites });

@@ -36,6 +36,7 @@ async function doSync() {
   if (paused) chrome.alarms.create('resume', { when: pausedUntil });
   else chrome.alarms.clear('resume');
   if (state === 'checking') chrome.alarms.create('retry', { delayInMinutes: 1 });
+  else chrome.alarms.clear('retry');
 
   await publish({
     state, enabled: settings.enabled, email, pausedUntil,

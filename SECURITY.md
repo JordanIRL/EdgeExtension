@@ -18,7 +18,8 @@ Report it privately with **Report a vulnerability** on this repository's Securit
 | Permission | Used for |
 |---|---|
 | `identity`, `identity.email` | Read the Edge profile account's email |
-| `declarativeNetRequestWithHostAccess` and the four sign-in hosts | Add `login_hint` on those hosts; check the account domain's type on `login.microsoftonline.com` |
+| `declarativeNetRequestWithHostAccess` | Add `login_hint` to sign-in requests. Edge applies the rules; the extension doesn't see the requests |
+| Host permissions for the four sign-in hosts | The only hosts the rules can change. The domain check (a cookie-less `fetch` to `login.microsoftonline.com`) also needs it |
 | `storage` | Settings, pause end time, the work/personal result for the account's domain; read administrator policy |
 | `alarms` | End a pause; re-check the profile account every 5 minutes; retry a failed check every minute |
 
