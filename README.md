@@ -11,6 +11,14 @@ On an Entra-joined Windows 11 PC where bob@example.com signs in to Windows:
 
 Install the extension in every profile you want this in (a force-installed extension is in every profile). Each copy uses its own profile's account.
 
+<p align="center">
+  <img src="docs/images/popup.png" width="330" alt="The extension's popup: Signing in as mary@example.com, with an on/off switch and Pause buttons">
+  &nbsp;
+  <img src="docs/images/popup-dark.png" width="330" alt="The same popup in dark mode">
+</p>
+
+More screenshots: [settings page](docs/images/settings.png), [paused](docs/images/popup-paused.png), and the [store screenshots](store/).
+
 ## How it works
 
 Microsoft's sign-in service chooses the account from the `login_hint` parameter of the sign-in request. The extension adds `login_hint=<profile email>` to sign-in requests using Edge's `declarativeNetRequest` rules. Edge applies the rules itself: the extension never sees the requests, can't read pages and runs no code on them. It reads your profile's email with Edge's `identity` API.
@@ -168,4 +176,5 @@ What to enter in Partner Center:
 - **Remote code:** No.
 - **Data usage:** tick **Personally identifiable information** (the email address, which is sent only to Microsoft's sign-in hosts). Nothing else is collected: no authentication data, web history or website content. The publisher receives no data.
 - **Privacy policy URL:** the web link to [PRIVACY.md](PRIVACY.md) in this repository.
+- **Store images:** the logo, screenshots and promo tiles are in [`store/`](store/), at the sizes Partner Center asks for.
 - **Notes for certification:** Needs an Edge profile signed in with a Microsoft Entra work or school account. With a personal account or an unsigned profile it intentionally does nothing, and the popup says so. To see it work, open https://portal.azure.com in a work profile: DevTools › Network shows a `307 Internal Redirect` that adds `login_hint`.

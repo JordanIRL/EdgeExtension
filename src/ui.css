@@ -33,7 +33,7 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 h1 { font-size: 15px; margin: 0; font-weight: 600; }
 h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
 p { margin: 0; }
-code { font-family: Consolas, ui-monospace, monospace; font-size: 12px; background: var(--card); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+code { font-family: Consolas, ui-monospace, monospace; font-size: 0.86em; background: color-mix(in srgb, var(--text) 8%, transparent); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
 a { color: var(--accent); }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
@@ -51,7 +51,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 input[type="email"], select, textarea { width: 100%; padding: 6px 8px; }
-textarea { resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 13px; }
+textarea { resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 12.5px; }
 :disabled { opacity: .6; cursor: not-allowed; }
 
 .brand { display: flex; align-items: center; gap: 10px; }

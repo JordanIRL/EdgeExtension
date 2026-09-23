@@ -158,7 +158,7 @@ check('origins match hosts', JSON.stringify(ORIGINS) === JSON.stringify(ENTRA_HO
 
 // --- Settings helpers ---
 check('normalizeEmail trims/lowercases', normalizeEmail('  Mary@Example.COM ') === MARY);
-check('normalizeEmail rejects junk', ['', 'mary', 'mary@', '@x.com', 'a b@c.com', null, undefined].every((v) => normalizeEmail(v) === ''));
+check('normalizeEmail rejects junk', ['', 'mary', 'mary@', '@example.org', 'a b@example.com', null, undefined].every((v) => normalizeEmail(v) === ''));
 check('cleanHost URL', cleanHost('https://Dev.Azure.com/org/project') === 'dev.azure.com');
 check('cleanHost wildcard', cleanHost('*.sharepoint.com') === 'sharepoint.com');
 check('cleanHost email-domain forms', ['@contoso.com', '*@contoso.com', 'contoso.com.', ' Contoso.COM '].every((v) => cleanHost(v) === 'contoso.com'));
