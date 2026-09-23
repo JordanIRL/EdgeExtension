@@ -23,9 +23,9 @@ export async function loadSettings() {
   }
   const settings = { ...POLICY_DEFAULTS, ...local, ...policy };
   settings.excludedSites = cleanHosts(settings.excludedSites).valid;
-  // If the policy lists domains but none is valid, keep the raw entries so nothing matches (fail closed).
-  const allowed = cleanHosts(settings.allowedDomains);
-  settings.allowedDomains = allowed.valid.length || !allowed.invalid.length ? allowed.valid : allowed.invalid;
+  // Any allowedDomains entry, even an invalid or blank one, restricts the extension to the valid entries.
+  settings.restrictDomains = Array.isArray(settings.allowedDomains) && settings.allowedDomains.length > 0;
+  settings.allowedDomains = cleanHosts(settings.allowedDomains).valid;
   return { settings, managed: Object.keys(policy) };
 }
 
@@ -69,7 +69,7 @@ export function describe(s) {
     case 'no-account':
       return ['No account to use', 'This Edge profile isn’t signed in. Sign in to it with a work or school account.'];
     case 'not-allowed':
-      return ['Not used for this account', `Your organization only turned this on for ${s.allowedDomains.join(', ')} accounts.`];
+      return ['Not used for this account', 'Your organization hasn’t turned this on for this account.'];
     case 'checking':
       return ['Checking your account', 'Couldn’t reach Microsoft to confirm this is a work or school account. Trying again in a minute.'];
     case 'personal':

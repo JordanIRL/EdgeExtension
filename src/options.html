@@ -49,11 +49,12 @@
   </section>
 
   <section class="card">
-    <h2>Edge settings that also matter</h2>
+    <h2>Other settings that affect sign-in</h2>
     <ul class="tips">
-      <li><strong>Automatic profile switching</strong> (<code>edge://settings/profiles/multiProfileSettings</code>) can move a Microsoft site into another profile before this extension runs. Turn it off, or set those sites to stay in the current profile.</li>
-      <li>For sign-in without a password prompt, the account should also be added to Windows under <strong>Settings › Accounts › Access work or school</strong>.</li>
-      <li>This extension picks the account, but apps that sign in through Windows directly (not the sign-in page) aren’t affected.</li>
+      <li><strong>Sign in to this Edge profile</strong> with your work or school account (Settings › Profiles). That’s the account this extension uses. It only chooses the account, so you may still be asked for a password or MFA.</li>
+      <li><strong>Which profile a site opens in.</strong> Automatic profile switching (Settings › Profiles), and <em>Profile preferences for sites</em> and <em>Default profile for external links</em> (Settings › Profiles › Profile preferences), can open a site in another profile. It then signs in with that profile’s account.</li>
+      <li>You don’t need to add this account to Windows (Settings › Accounts › Access work or school) for this extension. Doing that registers this PC with the account’s organization and can enroll it in their device management.</li>
+      <li><strong>Site access</strong> (<code>edge://extensions</code> › Details) must allow Microsoft’s sign-in pages. The extension never runs in InPrivate windows.</li>
     </ul>
   </section>
 </body>

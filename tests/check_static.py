@@ -29,6 +29,13 @@ for f in files:
         failures.append(f'missing file referenced by manifest: {f}')
 if manifest.get('host_permissions') != [f'https://{h}/*' for h in ('login.microsoftonline.com', 'login.microsoft.com', 'login.windows.net', 'sts.windows.net')]:
     failures.append('manifest host_permissions must match ENTRA_HOSTS in src/rules.js')
+if manifest.get('incognito') != 'not_allowed':
+    failures.append('manifest must keep incognito "not_allowed" (the extension must not run in InPrivate)')
+csp = manifest.get('content_security_policy', {}).get('extension_pages', '')
+if "default-src 'none'" not in csp or "script-src 'self'" not in csp:
+    failures.append('manifest extension_pages CSP must stay strict')
+if manifest.get('web_accessible_resources') or manifest.get('content_scripts') or manifest.get('externally_connectable'):
+    failures.append('no web_accessible_resources, content_scripts or externally_connectable')
 if len(manifest['description']) > 132:
     failures.append('manifest description is over 132 characters')
 

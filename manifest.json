@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Use My Profile Account",
-  "version": "1.0.0",
-  "description": "Signs you in to Microsoft 365, Azure and other Microsoft Entra sites with the work account of the Edge profile you're using.",
+  "version": "1.0.1",
+  "description": "Makes Microsoft 365, Azure and other Microsoft Entra sign-ins use the work account of the Edge profile you're using.",
   "minimum_chrome_version": "120",
   "icons": {
     "16": "icons/icon-16.png",
@@ -40,6 +40,10 @@
     "https://login.windows.net/*",
     "https://sts.windows.net/*"
   ],
+  "incognito": "not_allowed",
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://login.microsoftonline.com/common/userrealm/; base-uri 'none'; form-action 'none'"
+  },
   "storage": {
     "managed_schema": "schema.json"
   }

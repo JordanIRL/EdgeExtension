@@ -29,7 +29,7 @@ $Policy = [ordered]@{
 }
 
 $ErrorActionPreference = 'Stop'
-if ($ExtensionId -notmatch '^[a-p]{32}$') { throw "Set `$ExtensionId to the 32-letter extension ID first." }
+if ($ExtensionId -cnotmatch '^[a-p]{32}$') { throw "Set `$ExtensionId to the 32-letter, lower-case extension ID first." }
 $key = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\$ExtensionId\policy"
 
 # Start clean so settings removed from $Policy don't linger.

@@ -24,9 +24,10 @@ async function doSync() {
   let state = 'active';
   if (!settings.enabled) state = 'off';
   else if (!email) state = 'no-account';
-  else if (settings.allowedDomains.length && !settings.allowedDomains.some((d) => domain === d || domain.endsWith(`.${d}`))) state = 'not-allowed';
+  else if (settings.restrictDomains && !settings.allowedDomains.some((d) => domain === d || domain.endsWith(`.${d}`))) state = 'not-allowed';
   else {
-    const kind = await accountKind(email);
+    // Domains an administrator allowed are work domains, so they need no lookup.
+    const kind = settings.restrictDomains ? 'work' : await accountKind(domain);
     if (kind !== 'work') state = kind; // 'personal' or 'checking'
     else if (paused) state = 'paused';
   }
@@ -65,26 +66,27 @@ async function getProfileEmail() {
     const info = await chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' });
     return normalizeEmail(info?.email);
   } catch {
-    return ''; // InPrivate or identity unavailable
+    return ''; // identity unavailable
   }
 }
 
-// Only work or school accounts are used. Microsoft's public realm lookup says whether an email is one:
-// consumer domains (outlook.com, gmail.com, icloud.com...), self-service ("viral") tenants and domains
-// with no tenant are personal.
-// Answers are cached per email. If the lookup fails, nothing is done until it succeeds.
-async function accountKind(email) {
-  const { realms = {} } = await chrome.storage.local.get('realms');
-  if (email in realms) return realms[email];
+// Only work or school accounts are used. Microsoft's public realm lookup says whether an email domain
+// belongs to one: consumer domains (outlook.com, gmail.com, icloud.com...), self-service ("viral") tenants
+// and domains with no tenant are personal. The answer depends only on the domain, so only the domain is
+// sent, with a placeholder name. Only the answer for the current domain is kept. If the lookup fails,
+// nothing is done until it succeeds.
+async function accountKind(domain) {
+  const { realm } = await chrome.storage.local.get('realm');
+  if (realm?.domain === domain) return realm.kind;
   try {
-    const url = `https://login.microsoftonline.com/common/userrealm/?user=${encodeURIComponent(email)}&api-version=2.1`;
+    const url = `https://login.microsoftonline.com/common/userrealm/?user=${encodeURIComponent(`user@${domain}`)}&api-version=2.1`;
     const res = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
     const data = await res.json();
     if (!res.ok || typeof data.NameSpaceType !== 'string') return 'checking';
     const personal = data.ConsumerDomain === true || data.IsViral === true || data.NameSpaceType === 'Unknown' ||
       /(^|\.)live\.com$/i.test(data.DomainName ?? '');
     const kind = personal ? 'personal' : 'work';
-    await chrome.storage.local.set({ realms: { ...realms, [email]: kind } });
+    await chrome.storage.local.set({ realm: { domain, kind } });
     return kind;
   } catch {
     return 'checking'; // offline, captive portal, proxy: retried by the 'retry' alarm
@@ -121,13 +123,15 @@ chrome.permissions.onAdded.addListener(sync);
 chrome.permissions.onRemoved.addListener(sync);
 chrome.identity.onSignInChanged?.addListener(sync);
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'managed' || (area === 'local' && Object.keys(changes).some((k) => k !== 'realms'))) sync();
+  if (area === 'managed' || (area === 'local' && Object.keys(changes).some((k) => !k.startsWith('realm')))) sync();
 });
 chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   if (message !== 'sync') return false;
   sync().then(() => reply(true));
   return true;
 });
+
+chrome.storage.local.remove('realms'); // per-email cache written by version 1.0.0
 
 // The profile account can change without an event we can rely on, so also re-check periodically.
 chrome.alarms.get('resync').then((alarm) => alarm || chrome.alarms.create('resync', { periodInMinutes: RESYNC_MINUTES }));
