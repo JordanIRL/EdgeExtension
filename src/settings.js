@@ -4,11 +4,9 @@
 
 export const DEFAULTS = {
   enabled: true,
-  hintMode: 'always',       // always = use this profile's account even if the site named another; missing = keep the site's
-  accountPicker: 'skip',    // skip = sign straight in; site = show the picker when the site asks for it
-  includeFrames: true,      // also hidden-frame (silent) sign-ins
   excludedSites: [],
 };
+export const MAX_EXCLUDED_SITES = 100;
 
 // Microsoft's sign-out page. It ends the Microsoft sign-in sessions in this Edge profile and signs out of sites
 // that support single sign-out. Edge's own sign-in to the profile isn't affected.
@@ -26,8 +24,12 @@ export async function loadSettings() {
   } catch {
     // No managed storage (for example an unpacked build on an unmanaged device).
   }
-  const settings = { ...POLICY_DEFAULTS, ...local, ...policy };
+  // Ignore retired settings and unknown policy keys: sign-in behaviour is no longer configurable.
+  const keys = { ...DEFAULTS, ...POLICY_DEFAULTS };
+  policy = Object.fromEntries(Object.entries(policy).filter(([key]) => Object.hasOwn(keys, key)));
+  const settings = { ...keys, ...local, ...policy };
   settings.excludedSites = cleanHosts(settings.excludedSites).valid;
+  if (settings.excludedSites.length > MAX_EXCLUDED_SITES) throw new Error(`Use at most ${MAX_EXCLUDED_SITES} excluded sites.`);
   // Any allowedDomains entry, even an invalid or blank one, restricts the extension to the valid entries.
   settings.restrictDomains = Array.isArray(settings.allowedDomains) && settings.allowedDomains.length > 0;
   settings.allowedDomains = cleanHosts(settings.allowedDomains).valid;
@@ -44,7 +46,8 @@ export function normalizeEmail(value) {
 export function cleanHost(value) {
   const host = String(value).trim().toLowerCase()
     .replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\*?[.@]/, '').replace(/[/:?#].*$/, '').replace(/\.$/, '');
-  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : '';
+  return host.length <= 253 && host.includes('.') && host.split('.').every((label) =>
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) ? host : '';
 }
 
 export function cleanHosts(list) {
@@ -65,7 +68,7 @@ export function describe(s) {
   switch (s?.state) {
     case 'active':
       return s.hasAccess
-        ? [`Signing in as ${s.email}`, 'Work or school account of this Edge profile']
+        ? [`Ready to sign in as ${s.email}`, 'Profile account for new work sign-ins']
         : ['Needs access to sign-in pages', 'Edge isn’t letting the extension work on Microsoft sign-in pages.'];
     case 'paused':
       return [`Paused until ${time(s.pausedUntil)}`, 'Sign-ins work as they normally would until then.'];

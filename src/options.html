@@ -26,29 +26,20 @@
     </div>
     <div class="field">
       <span class="label">Sign-in sessions</span>
-      <p class="muted">Signs you out of Microsoft sign-in in this Edge profile, and out of sites that support it, so they sign in again with this profile’s account. Your Edge profile stays signed in. With several accounts signed in, Microsoft asks which to sign out.</p>
+      <p class="muted">Opens Microsoft’s sign-out page for this profile. Your Edge profile stays signed in. A site may need its own sign-out; this does not clear all cookies or cached tokens.</p>
       <div><button id="clearSessions">Clear sign-in sessions</button></div>
     </div>
   </section>
 
   <section class="card">
     <h2>Sign-in behavior</h2>
-    <fieldset id="hintMode">
-      <legend>When a site already asks for a specific account</legend>
-      <label class="choice"><input type="radio" name="hintMode" value="always"> Use this profile’s account instead <span class="muted">(recommended)</span></label>
-      <label class="choice"><input type="radio" name="hintMode" value="missing"> Keep the site’s choice</label>
-    </fieldset>
-    <fieldset id="accountPicker">
-      <legend>When a site asks you to pick an account</legend>
-      <label class="choice"><input type="radio" name="accountPicker" value="skip"> Skip the picker and use this profile’s account <span class="muted">(recommended)</span></label>
-      <label class="choice"><input type="radio" name="accountPicker" value="site"> Show the account picker</label>
-    </fieldset>
-    <label class="choice"><input id="includeFrames" type="checkbox"> Also apply to background sign-ins that sites run in hidden frames</label>
+    <p>New work sign-ins use this profile’s account, replacing a site’s account hint and skipping its account selector.</p>
+    <p class="muted">Sign-in is silent when Microsoft can use an existing session. Passwords, MFA and consent may still be required. Existing website sessions and account-specific background renewals are not switched.</p>
   </section>
 
   <section class="card">
     <h2>Excluded sites</h2>
-    <p class="muted">Sign-ins that start from or return to these sites are left alone. One per line, for example <code>dev.azure.com</code>. Subdomains are included.</p>
+    <p class="muted">Leave blank for normal use. Sign-ins that start from or return to these sites are left alone. One per line; subdomains are included. Up to 100 sites.</p>
     <textarea id="excludedSites" rows="4" spellcheck="false" aria-label="Excluded sites"></textarea>
     <span id="sitesError" class="error small" role="alert" hidden></span>
   </section>
@@ -58,7 +49,6 @@
     <ul class="tips">
       <li><strong>Sign in to this Edge profile</strong> with your work or school account (<a href="edge://settings/profiles">Settings › Profiles</a>). That’s the account this extension uses. It only chooses the account, so you may still be asked for a password or MFA.</li>
       <li><strong>Which profile a site opens in.</strong> Automatic profile switching (<a href="edge://settings/profiles">Settings › Profiles</a>), and <em>Profile preferences for sites</em> and <em>Default profile for external links</em> (<a href="edge://settings/profiles/multiProfileSettings">Settings › Profiles › Profile preferences</a>), can open a site in another profile. It then signs in with that profile’s account.</li>
-      <li>You don’t need to add this account to Windows (Settings › Accounts › Access work or school) for this extension. Doing that registers this PC with the account’s organization and can enroll it in their device management.</li>
       <li><strong>Site access</strong> (<a id="extensionDetails" href="edge://extensions">Extensions › Details</a>) must allow Microsoft’s sign-in pages. The extension never runs in InPrivate windows.</li>
     </ul>
   </section>

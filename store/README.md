@@ -17,14 +17,14 @@ For the GitHub repository's social preview, upload [`../docs/images/social-previ
 
 **Description:**
 
-Use My Profile Account makes Microsoft 365, Azure, SharePoint and other Microsoft Entra sign-ins use the work or school account of the Edge profile you're using — instead of the Windows account or an account picker.
+Use My Profile Account prefers the work or school account of the current Edge profile on new Microsoft Entra sign-ins, including Microsoft 365, Azure and SharePoint, and removes supported account-picker requests.
 
-It's built for people with more than one work account on the same PC. Give each account its own Edge profile, and each profile signs in as itself.
+It's built for people with more than one work account on the same PC. Give each account its own Edge profile. There are no conflicting account-selection settings: the profile account is always the hint used on supported new sign-ins.
 
-• Adds your profile's account as the sign-in hint on Microsoft's sign-in pages, even when a site asks for a different account (or keep the site's choice).
-• Clear old sign-in sessions with one click, skip or show the account picker, exclude sites, and pause for 15 minutes when you need another account.
+• Replaces another account hint with the profile account and skips supported selector prompts, without removing required login or consent.
+• Opens Microsoft's sign-out page, excludes sites when needed, and provides a 15-minute troubleshooting pause.
 • Does nothing for personal Microsoft accounts and never runs in InPrivate windows.
-• No telemetry. The extension can't read pages; only your account's domain is checked to confirm it's a work or school account.
+• No telemetry, content scripts or cookie access. Only your account's domain is sent for a work-domain eligibility check; the publisher receives no data.
 • Administrators can enforce settings and limit it to their domains with Edge policy.
 
-The extension chooses the account; it doesn't bypass MFA or Conditional Access.
+Silent sign-in depends on an available Microsoft session and organization policy. This helper doesn't bypass MFA/Conditional Access, replace existing website sessions, or guarantee the selected account. Microsoft's sign-out page does not clear all cookies or tokens. See the README for scope and limitations.

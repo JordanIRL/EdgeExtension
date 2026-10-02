@@ -10,7 +10,7 @@ const hostOf = (url) => (/^[a-z]+:\/\/([^/:?#]+)/i.exec(url) || [])[1]?.toLowerC
 const domainMatch = (host, list) => list.some((d) => host === d || host.endsWith(`.${d}`));
 const RANK = { allow: 5, allowAllRequests: 4, block: 3, upgradeScheme: 2, redirect: 1, modifyHeaders: 0 };
 
-const MODELLED = new Set(['resourceTypes', 'requestMethods', 'requestDomains', 'initiatorDomains', 'regexFilter']);
+const MODELLED = new Set(['resourceTypes', 'requestMethods', 'requestDomains', 'initiatorDomains', 'regexFilter', 'isUrlFilterCaseSensitive']);
 
 function matches(rule, req) {
   const c = rule.condition;
@@ -20,7 +20,7 @@ function matches(rule, req) {
   if (c.requestMethods && !c.requestMethods.includes(req.method)) return false;
   if (c.requestDomains && !domainMatch(hostOf(req.url), c.requestDomains)) return false;
   if (c.initiatorDomains && !(req.initiator && domainMatch(hostOf(req.initiator), c.initiatorDomains))) return false;
-  if (c.regexFilter && !new RegExp(c.regexFilter, 'i').test(req.url)) return false;
+  if (c.regexFilter && !new RegExp(c.regexFilter, c.isUrlFilterCaseSensitive ? '' : 'i').test(req.url)) return false;
   return true;
 }
 

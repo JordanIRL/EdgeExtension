@@ -6,32 +6,9 @@
       "description": "Turns the extension on or off for every profile. Users can't change it when set.",
       "type": "boolean"
     },
-    "hintMode": {
-      "title": "When a site already asks for a specific account",
-      "description": "always = use the profile account instead (default). missing = keep the site's choice.",
-      "type": "string",
-      "enum": [
-        "missing",
-        "always"
-      ]
-    },
-    "accountPicker": {
-      "title": "When a site asks the user to pick an account",
-      "description": "skip = skip the picker and use the profile account (default). site = show the picker.",
-      "type": "string",
-      "enum": [
-        "skip",
-        "site"
-      ]
-    },
-    "includeFrames": {
-      "title": "Include background sign-ins in hidden frames",
-      "description": "Also add the profile account to silent sign-ins that sites run in iframes. Default: true.",
-      "type": "boolean"
-    },
     "excludedSites": {
       "title": "Excluded sites",
-      "description": "Host names (subdomains included) whose sign-ins are left alone, for example dev.azure.com. Replaces the user's own list.",
+      "description": "Up to 100 host names (subdomains included) whose sign-ins are left alone. Replaces the user's list.",
       "type": "array",
       "items": {
         "type": "string"
@@ -44,7 +21,7 @@
     },
     "allowedDomains": {
       "title": "Only for these account domains",
-      "description": "Only act when the profile account's email domain is in this list (subdomains included), for example contoso.com. Empty or unset = any account.",
+      "description": "Trusted work domains (subdomains included), for example contoso.com. Skips account-type discovery. Empty or unset = check whether the domain is work or school.",
       "type": "array",
       "items": {
         "type": "string"

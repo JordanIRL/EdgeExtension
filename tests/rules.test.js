@@ -1,6 +1,6 @@
 // Run with tests/run.sh (JavaScriptCore on macOS). Prints generated regexes for the RE2 size check.
 import { buildRules, ORIGINS, ENTRA_HOSTS } from '../src/rules.js';
-import { DEFAULTS, cleanHost, cleanHosts, normalizeEmail } from '../src/settings.js';
+import { DEFAULTS, MAX_EXCLUDED_SITES, cleanHost, cleanHosts, normalizeEmail } from '../src/settings.js';
 import { navigate } from './dnr.js';
 
 const log = globalThis.print ?? console.log;
@@ -38,12 +38,13 @@ run('v2 authorize gets login_hint', {}, V2, (u) => u === `${V2}&${HINT}`);
 run('v1 tenant authorize gets login_hint', {}, V1, has(HINT));
 run('common endpoint', {}, 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=x', has(HINT));
 run('empty login_hint replaced in place (no duplicate)', {}, `${V2}&login_hint=&state=abc`,
-  (u) => u === `${V2}&${HINT}&state=abc` && count(u, 'login_hint') === 1);
-check('default is to use the profile account', DEFAULTS.hintMode === 'always');
+  (u) => u === `${V2}&state=abc&${HINT}` && count(u, 'login_hint') === 1);
+check('behaviour choices removed', !('hintMode' in DEFAULTS) && !('accountPicker' in DEFAULTS) && !('includeFrames' in DEFAULTS));
 run('default replaces a site hint for another account', {}, `${V2}&login_hint=bob%40example.com`,
   (u) => u === `${V2}&${HINT}`);
-run('keep mode: existing hint kept', { hintMode: 'missing' }, `${V2}&login_hint=bob%40example.com`, 'same');
-run('keep mode: existing username kept', { hintMode: 'missing' }, `${V2}&username=bob%40example.com`, 'same');
+run('retired keep mode cannot change fixed behaviour', { hintMode: 'missing' }, `${V2}&login_hint=bob%40example.com`, has(HINT));
+run('duplicate hints removed', {}, `${V2}&login_hint=bob&login_hint=other`,
+  (u) => u === `${V2}&${HINT}`);
 run('always mode replaces other hint', { hintMode: 'always' }, `${V2}&login_hint=bob%40example.com`,
   (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
 run('always mode, already ours: no redirect', { hintMode: 'always' }, `${V2}&${HINT}`, 'same');
@@ -54,7 +55,9 @@ run('sid kept in always mode', { hintMode: 'always' }, `${V2}&sid=abc123`, 'same
 run('id_token_hint kept', {}, `${V2}&id_token_hint=eyJ0`, 'same');
 run('encoded login%5Fhint left alone', {}, `${V2}&login%5Fhint=`, 'same');
 run('encoded login%5Fhint left alone (always)', { hintMode: 'always' }, `${V2}&login%5fhint=bob`, 'same');
-run('keep mode: keys are case-insensitive for the guard', { hintMode: 'missing' }, `${V2}&LOGIN_HINT=bob`, 'same');
+for (const key of ['LOGIN_HINT', 'Login_Hint', 'login_Hint', 'USERNAME', 'UserName', 'PROMPT', 'DOMAIN_HINT']) {
+  run(`unusual key ${key} is safe`, {}, `${V2}&${key}=bob`, 'same');
+}
 run('sign-up (prompt=create) left alone', {}, `${V2}&prompt=create`, 'same');
 run('prompt=login still hinted', {}, `${V2}&prompt=login`, has(HINT, 'prompt=login'));
 run('prompt=none (silent) hinted', {}, `${V2}&prompt=none`, has(HINT, 'prompt=none'));
@@ -64,13 +67,20 @@ const OWA = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?clie
 run('select_account removed and hinted', {}, OWA,
   (u) => u === `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&state=x&${HINT}`);
 run('select_account as last param', {}, `${V2}&prompt=select_account`, (u) => u === `${V2}&${HINT}`);
-run('select_account kept when set to show picker', { accountPicker: 'site' }, OWA, 'same');
-run('keep mode: select_account with site hint kept', { hintMode: 'missing' }, `${OWA}&login_hint=bob%40example.com`, 'same');
+run('encoded selector value removed', {}, `${V2}&prompt=select%5Faccount`, (u) => u === `${V2}&${HINT}`);
+run('retired picker setting cannot show picker', { accountPicker: 'site' }, OWA, has(HINT));
 run('select_account + empty hint', {}, `${OWA}&login_hint=`, (u) => !u.includes('prompt=') && count(u, 'login_hint') === 1 && u.includes(HINT));
 run('select_account in always mode', { hintMode: 'always' }, `${OWA}&login_hint=bob`, (u) => !u.includes('prompt=') && u.includes(HINT) && !u.includes('bob'));
 run('other prompt value untouched', {}, `${V2}&prompt=consent`, has(HINT, 'prompt=consent'));
-run('prompt with several values kept (never drops prompt=login)', {}, `${V2}&prompt=login+select_account`,
-  has(HINT, 'prompt=login+select_account'));
+for (const required of ['login', 'consent']) {
+  for (const separator of ['+', '%20']) {
+    for (const values of [`${required}${separator}select_account`, `select_account${separator}${required}`]) {
+      run(`composite ${values}: only selector removed`, {}, `${V2}&prompt=${values}`,
+        (u) => u.includes(HINT) && u.includes(`prompt=${required}`) && !u.includes('select_account'));
+    }
+  }
+}
+run('encoded consumer hint untouched', {}, `${V2}&domain_hint=%63onsumers`, 'same');
 
 // --- Personal-account sign-ins in a work profile are left alone ---
 const CONSUMER_OWA = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&redirect_uri=https%3A%2F%2Foutlook.live.com%2Fmail%2F&prompt=select_account';
@@ -79,6 +89,8 @@ run('consumer OneDrive return untouched', {}, `${V2}&redirect_uri=https%3A%2F%2F
 run('work Outlook still hinted', {}, OWA.replace('client_id=9199bf20', 'client_id=9199bf20&redirect_uri=https%3A%2F%2Foutlook.office.com%2Fmail%2F'), has(HINT));
 run('domain_hint=consumers untouched', {}, `${V2}&domain_hint=consumers`, 'same');
 run('domain_hint=organizations still hinted', {}, `${V2}&domain_hint=organizations`, has(HINT));
+run('another organization routing hint removed', {}, `${V2}&domain_hint=other.example.com&login_hint=bob`,
+  (u) => u === `${V2}&${HINT}`);
 run('look-alike live.com host still hinted', {}, `${V2}&redirect_uri=https%3A%2F%2Fnotlive.com%2F`, has(HINT));
 run('live.com in a path still hinted', {}, `${V2}&redirect_uri=https%3A%2F%2Fcontoso.com%2Fdocs.live.com%2Fauth`, has(HINT));
 const MSA_PORTAL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=81feaced&redirect_uri=https%3A%2F%2Faccount.microsoft.com%2Fauth%2Fcomplete-signin-oauth&prompt=login&msaoauth2=true';
@@ -105,7 +117,7 @@ run('look-alike host untouched', {}, 'https://login.microsoftonline.com.evil.tes
 run('POST to authorize untouched', {}, V2, 'same', { method: 'post' });
 run('XHR untouched', {}, V2, 'same', { type: 'xmlhttprequest' });
 run('hidden frame hinted by default', {}, `${V2}&prompt=none`, has(HINT), { type: 'sub_frame' });
-run('hidden frame skipped when off', { includeFrames: false }, `${V2}&prompt=none`, 'same', { type: 'sub_frame' });
+run('retired frame setting cannot disable silent hints', { includeFrames: false }, `${V2}&prompt=none`, has(HINT), { type: 'sub_frame' });
 run('always mode keeps an app hint in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&login_hint=bob`, 'same', { type: 'sub_frame' });
 run('always mode still fills an empty hint in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&login_hint=`, has(HINT), { type: 'sub_frame' });
 run('always mode keeps an app username in hidden frames', { hintMode: 'always' }, `${V2}&prompt=none&username=bob`, 'same', { type: 'sub_frame' });
@@ -114,7 +126,6 @@ run('always mode keeps an app username in hidden frames', { hintMode: 'always' }
 const SAML = 'https://login.microsoftonline.com/0c8f0000-aaaa-bbbb-cccc-000000000000/saml2';
 run('SAML redirect binding', {}, `${SAML}?SAMLRequest=fZJb&RelayState=x`, has(HINT, 'SAMLRequest=fZJb'));
 run('SAML POST binding gets query', {}, SAML, (u) => u === `${SAML}?${HINT}`, { method: 'post' });
-run('keep mode: WS-Fed with hint kept', { hintMode: 'missing' }, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`, 'same');
 run('default: WS-Fed hint replaced', {}, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`,
   (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
 
@@ -140,10 +151,13 @@ run('not excluded: host prefix only', EX, withRedirect('https://olddev.azure.com
 run('excluded: query right after host', EX, withRedirect('https://dev.azure.com?x=1'), 'same');
 run('not excluded: longer TLD', EX, withRedirect('https://dev.azure.company/'), has(HINT));
 {
-  const many = Array.from({ length: 1200 }, (_, i) => `site${i}.example.com`);
+  const many = Array.from({ length: MAX_EXCLUDED_SITES }, (_, i) => `site${i}.example.com`);
   const rules = buildRules({ ...DEFAULTS, email: MARY, excludedSites: many });
   check('regex rules stay under the 1000 limit', rules.filter((r) => r.condition.regexFilter).length <= 1000);
-  check('initiator exclusion keeps every site', rules.some((r) => r.condition.initiatorDomains?.length === 1200));
+  check('initiator exclusion keeps every site', rules.some((r) => r.condition.initiatorDomains?.length === MAX_EXCLUDED_SITES));
+  let rejected = false;
+  try { buildRules({ email: MARY, excludedSites: [...many, 'extra.example.com'] }); } catch { rejected = true; }
+  check('too many exclusions rejected, not truncated', rejected);
 }
 {
   const rules = buildRules({ ...DEFAULTS, email: 'o\'neil+test@example.com' });
@@ -166,7 +180,7 @@ for (const settings of [{}, { hintMode: 'missing', accountPicker: 'site', includ
     check('methods lowercase', !c.requestMethods || c.requestMethods.every((m) => m === m.toLowerCase()));
     check('regex ASCII, no lookaround/backrefs', !c.regexFilter || (/^[\x20-\x7e]+$/.test(c.regexFilter) && !/\(\?[=!<]|\\[1-9]/.test(c.regexFilter)), c.regexFilter);
     check('non-empty domain lists', ['requestDomains', 'initiatorDomains'].every((k) => !c[k] || c[k].length));
-    check('hint value is raw email', r.action.type !== 'redirect' || r.action.redirect.transform.queryTransform.addOrReplaceParams[0].value === MARY);
+    check('hint value is raw email', r.action.type !== 'redirect' || r.action.redirect.transform.queryTransform.addOrReplaceParams.find((p) => p.key === 'login_hint').value === MARY);
   }
 }
 
@@ -180,7 +194,7 @@ check('cleanHost URL', cleanHost('https://Dev.Azure.com/org/project') === 'dev.a
 check('cleanHost wildcard', cleanHost('*.sharepoint.com') === 'sharepoint.com');
 check('cleanHost email-domain forms', ['@contoso.com', '*@contoso.com', 'contoso.com.', ' Contoso.COM '].every((v) => cleanHost(v) === 'contoso.com'));
 check('cleanHost port', cleanHost('intranet.contoso.com:8443') === 'intranet.contoso.com');
-check('cleanHost rejects', ['localhost', 'a b.com', 'contoso', '', '.com'].every((v) => cleanHost(v) === ''));
+check('cleanHost rejects', ['localhost', 'a b.com', 'contoso', '', '.com', '-a.example.com', 'a-.example.com', `${'a'.repeat(64)}.com`].every((v) => cleanHost(v) === ''));
 {
   const { valid, invalid } = cleanHosts(['dev.azure.com', 'DEV.azure.com', 'bad host', '', 'x.y']);
   check('cleanHosts dedupes and reports', JSON.stringify(valid) === '["dev.azure.com","x.y"]' && JSON.stringify(invalid) === '["bad host"]');

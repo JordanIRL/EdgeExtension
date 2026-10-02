@@ -21,6 +21,11 @@ async function doSync() {
   const domain = email.split('@')[1];
   const paused = settings.allowPause && pausedUntil > Date.now();
 
+  // Dynamic rules survive worker restarts. Discard an old identity before a slow realm lookup.
+  const current = await chrome.declarativeNetRequest.getDynamicRules();
+  if (!settings.enabled || paused || !email || current.some((r) => r.action.redirect?.transform?.queryTransform
+    ?.addOrReplaceParams.some((p) => p.key === 'login_hint' && p.value !== email))) await setRules([]);
+
   let state = 'active';
   if (!settings.enabled) state = 'off';
   else if (!email) state = 'no-account';
@@ -32,7 +37,14 @@ async function doSync() {
     else if (paused) state = 'paused';
   }
 
-  await setRules(state === 'active' ? await supported(buildRules({ ...settings, email })) : []);
+  const rules = state === 'active' ? await supported(buildRules({ ...settings, email })) : [];
+  // A profile change during discovery must not reinstall the identity we just discarded.
+  if (await getProfileEmail() !== email) {
+    await setRules([]);
+    sync();
+    return;
+  }
+  await setRules(rules);
   if (paused) chrome.alarms.create('resume', { when: pausedUntil });
   else chrome.alarms.clear('resume');
   if (state === 'checking') chrome.alarms.create('retry', { delayInMinutes: 1 });
@@ -51,12 +63,13 @@ async function fail(error) {
     await setRules([]);
   } finally {
     const { status } = await chrome.storage.session.get('status');
-    await publish({ ...status, state: 'error', error: String(error?.message ?? error) });
+    await publish({ ...status, email: await getProfileEmail(), state: 'error', error: String(error?.message ?? error) });
   }
 }
 
 async function setRules(rules) {
   const current = await chrome.declarativeNetRequest.getDynamicRules();
+  if (JSON.stringify(current) === JSON.stringify(rules)) return;
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: current.map((r) => r.id), addRules: rules });
 }
 
@@ -71,11 +84,9 @@ async function getProfileEmail() {
   }
 }
 
-// Only work or school accounts are used. Microsoft's public realm lookup says whether an email domain
-// belongs to one: consumer domains (outlook.com, gmail.com, icloud.com...), self-service ("viral") tenants
-// and domains with no tenant are personal. The answer depends only on the domain, so only the domain is
-// sent, with a placeholder name. Only the answer for the current domain is kept. If the lookup fails,
-// nothing is done until it succeeds.
+// Domain discovery is an eligibility check, not proof of the profile's identity/account type.
+// Only a placeholder name is sent, without cookies; keep one domain result. Ambiguous/error responses
+// disable rules until discovery succeeds. Organization-approved allowedDomains bypass this lookup.
 async function accountKind(domain) {
   const { realm } = await chrome.storage.local.get('realm');
   if (realm?.domain === domain) return realm.kind;
@@ -83,7 +94,7 @@ async function accountKind(domain) {
     const url = `https://login.microsoftonline.com/common/userrealm/?user=${encodeURIComponent(`user@${domain}`)}&api-version=2.1`;
     const res = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
     const data = await res.json();
-    if (!res.ok || typeof data.NameSpaceType !== 'string') return 'checking';
+    if (!res.ok || !['Managed', 'Federated', 'Unknown'].includes(data.NameSpaceType)) return 'checking';
     const personal = data.ConsumerDomain === true || data.IsViral === true || data.NameSpaceType === 'Unknown' ||
       /(^|\.)live\.com$/i.test(data.DomainName ?? '');
     const kind = personal ? 'personal' : 'work';
@@ -94,13 +105,14 @@ async function accountKind(domain) {
   }
 }
 
-// One regex that Edge can't compile rejects the whole update, so drop any it won't accept
-// (for example an excluded site with a very long host name).
+// Never silently drop a safety guard or an exclusion. An unsupported rule disables the extension.
 async function supported(rules) {
   const ok = await Promise.all(rules.map((r) => !r.condition.regexFilter ||
-    chrome.declarativeNetRequest.isRegexSupported({ regex: r.condition.regexFilter, isCaseSensitive: false })
+    chrome.declarativeNetRequest.isRegexSupported({ regex: r.condition.regexFilter,
+      isCaseSensitive: r.condition.isUrlFilterCaseSensitive ?? false })
       .then((res) => res.isSupported)));
-  return rules.filter((_, i) => ok[i]).map((r, i) => ({ ...r, id: i + 1 }));
+  if (ok.includes(false)) throw new Error('Edge could not compile a sign-in rule. Check excluded site names or report this issue.');
+  return rules;
 }
 
 async function publish(status) {
@@ -132,8 +144,9 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   return true;
 });
 
-chrome.storage.local.remove('realms'); // per-email cache written by version 1.0.0
+// Remove the old per-email cache and retired behaviour preferences on upgrade.
+chrome.storage.local.remove(['realms', 'hintMode', 'accountPicker', 'includeFrames']);
 
 // The profile account can change without an event we can rely on, so also re-check periodically.
-chrome.alarms.get('resync').then((alarm) => alarm || chrome.alarms.create('resync', { periodInMinutes: RESYNC_MINUTES }));
+chrome.alarms.create('resync', { periodInMinutes: RESYNC_MINUTES });
 sync();

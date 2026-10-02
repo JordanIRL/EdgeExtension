@@ -2,17 +2,17 @@
 
 ## Reporting a vulnerability
 
-Report it privately with **Report a vulnerability** on this repository's Security tab: https://github.com/JordanIRL/EdgeExtension/security. Please don't open a public issue. Fixes ship as a new version on Edge Add-ons; only the latest version is supported.
+Report it privately with **Report a vulnerability** on this repository's Security tab if enabled: https://github.com/JordanIRL/EdgeExtension/security. Please don't include credentials, tokens or session URLs in a public issue. Only the latest source version is supported; this repository does not claim store certification or enterprise approval.
 
 ## Design
 
 - Manifest V3. No content scripts and no web-accessible resources. It accepts no messages from web pages or other extensions.
 - No remote code: all code ships in the package. The Content Security Policy of the extension's pages allows scripts, styles and images from the package only, and network connections only to `https://login.microsoftonline.com/common/userrealm/`.
-- No build step, bundler, minifier or third-party libraries. The package is `manifest.json`, `schema.json`, `src/` and `icons/` from this repository.
-- The extension never sees sign-in requests or page content. Edge applies its `declarativeNetRequest` rules, which only add `login_hint` to sign-in requests on `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`. The rules can't change the host, path or any other site.
+- No build step, bundler, minifier or third-party libraries. The package is `manifest.json`, `schema.json`, `src/`, `icons/` and the MIT license notice from this repository.
+- This build does not read sign-in request contents or page content. Its DNR rules change only account/prompt query parameters on `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`, never destinations or paths. Host permissions are security-sensitive capabilities; reviewers should inspect updates, not assume the code is technically incapable of accessing identity pages.
 - It fails closed. It removes its rules and leaves sign-ins alone when it's off or paused, when the profile has no account, when the account is personal or outside `allowedDomains`, when the work-or-school check hasn't succeeded, or when anything fails.
 - It never runs in InPrivate windows (`"incognito": "not_allowed"`).
-- **Clear sign-in sessions** only opens Microsoft's sign-out page in a new tab (`chrome.tabs.create`, no extra permission). The extension can't read or delete cookies.
+- **Clear sign-in sessions** only opens Microsoft's sign-out page in a new tab (`chrome.tabs.create`, no extra permission). This build does not read/delete cookies or revoke tokens.
 
 ## Permissions
 
@@ -32,10 +32,11 @@ Nothing is sent to the publisher. [PRIVACY.md](PRIVACY.md) lists what's used, se
 
 - Install with `ExtensionInstallForcelist` or `ExtensionSettings` (`installation_mode: force_installed`, `update_url: https://edge.microsoft.com/extensionwebstorebase/v1/crx`). Removing it from policy uninstalls it.
 - `ExtensionSettings` can block it (`blocked` or `removed`) or set `minimum_version_required`. A `runtime_blocked_hosts` entry covering the sign-in hosts stops it working. A per-extension entry doesn't inherit `runtime_blocked_hosts` from `"*"`, so other extensions can be kept off the sign-in hosts while this one is allowed.
-- Extension policy (`schema.json`, see [README](README.md#enforcing-settings-with-policy)): `enabled`, `allowedDomains`, `allowPause`, `excludedSites`, `hintMode`, `accountPicker`, `includeFrames`.
-- Updates come from Edge Add-ons and install automatically once Microsoft has certified them.
+- Extension policy (`schema.json`, see [README](README.md#enterprise-deployment)): `enabled`, `allowedDomains`, `allowPause`, `excludedSites`.
+- For store-deployed builds, updates are distributed through Edge Add-ons certification. Organizational approval and pilot testing are still required.
 
 ## Limitations
 
-- It only chooses the account. It doesn't bypass MFA or Conditional Access, and it doesn't provide single sign-on.
-- The work-or-school check uses Microsoft's undocumented `userrealm` endpoint. If that endpoint changes or fails, the extension stops acting until the check succeeds. Setting `allowedDomains` skips the check.
+- It supplies an account hint, not an authentication or authorization guarantee. It doesn't bypass MFA/Conditional Access or provide single sign-on. Existing app sessions, session-bound renewals, broker flows and unreported profile changes are not immediately switched or enforced.
+- Unsupported regexes and failed updates remove all rules; no safety guard or exception is silently dropped.
+- Work-domain discovery uses Microsoft's undocumented `userrealm` endpoint. It cannot prove the profile's account type, especially on mixed personal/work custom domains. If discovery changes or fails, rules stay inactive. `allowedDomains` skips discovery and must contain organization-approved work domains.

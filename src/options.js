@@ -1,22 +1,26 @@
-import { loadSettings, cleanHosts, clearSignInSessions } from './settings.js';
+import { loadSettings, cleanHosts, clearSignInSessions, MAX_EXCLUDED_SITES } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const save = (values) => chrome.storage.local.set(values);
-const radios = (name) => document.querySelectorAll(`input[name="${name}"]`);
 
 async function init() {
-  const { settings, managed } = await loadSettings();
-  for (const name of ['hintMode', 'accountPicker']) {
-    for (const r of radios(name)) r.checked = r.value === settings[name];
+  let settings, managed;
+  try { ({ settings, managed } = await loadSettings()); }
+  catch (e) {
+    $('sitesError').textContent = e.message;
+    $('sitesError').hidden = false;
+    await renderStatus();
+    return;
   }
-  $('includeFrames').checked = settings.includeFrames;
+  $('excludedSites').disabled = managed.includes('excludedSites');
+  document.querySelectorAll('.locked').forEach((el) => el.classList.remove('locked'));
   $('excludedSites').value = settings.excludedSites.join('\n');
 
   for (const key of managed) {
     const el = $(key);
     if (!el) continue;
     el.disabled = true;
-    el.closest('label, fieldset, section')?.classList.add('locked');
+    el.closest('section')?.classList.add('locked');
   }
   $('managedNote').hidden = !managed.length;
   renderStatus();
@@ -28,15 +32,13 @@ async function renderStatus() {
   $('profileEmail').textContent = status.email || 'Not signed in to this Edge profile';
 }
 
-for (const name of ['hintMode', 'accountPicker']) {
-  for (const r of radios(name)) r.addEventListener('change', () => save({ [name]: r.value }));
-}
-$('includeFrames').addEventListener('change', (e) => save({ includeFrames: e.target.checked }));
 $('excludedSites').addEventListener('change', (e) => {
   const { valid, invalid } = cleanHosts(e.target.value.split(/[\s,;]+/));
-  $('sitesError').hidden = !invalid.length;
-  $('sitesError').textContent = `Not a site name: ${invalid.join(', ')}`;
-  save({ excludedSites: valid });
+  const error = invalid.length ? `Not a site name: ${invalid.join(', ')}` :
+    valid.length > MAX_EXCLUDED_SITES ? `Use at most ${MAX_EXCLUDED_SITES} excluded sites.` : '';
+  $('sitesError').hidden = !error;
+  $('sitesError').textContent = error;
+  if (!error) save({ excludedSites: valid });
 });
 
 $('clearSessions').addEventListener('click', clearSignInSessions);
@@ -55,6 +57,7 @@ addEventListener('pagehide', () => document.activeElement === $('excludedSites')
   $('excludedSites').dispatchEvent(new Event('change')));
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes.status) renderStatus();
+  if (area === 'managed') init();
 });
 init();
 chrome.runtime.sendMessage('sync').catch(() => {});

@@ -17,3 +17,8 @@ else
 fi
 echo "$OUT" | grep -v '^REGEX '
 echo "$OUT" | sed -n 's/^REGEX //p' | "$PY" tests/check_static.py
+if command -v node >/dev/null; then
+  node tests/background.test.mjs
+else
+  echo 'Background lifecycle checks: skipped (run node tests/background.test.mjs with Node 22+)'
+fi

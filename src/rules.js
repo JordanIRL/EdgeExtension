@@ -1,77 +1,57 @@
-// Builds the declarativeNetRequest rules that add the profile account to Microsoft sign-in requests.
-// No chrome.* calls here, so the rules can be unit tested (see tests/).
-//
-// Work and school (Microsoft Entra ID) accounts only.
-//
-// How it works: Microsoft's sign-in service picks the account from the login_hint query parameter.
-// A redirect rule adds login_hint=<email> to sign-in requests. Higher-priority "allow" rules leave a
-// request alone when adding the hint would be wrong. Once the hint is there, the allow rule matches
-// the redirected request, so each sign-in gets exactly one extra internal redirect.
+// Pure DNR rule builder. Edge applies these rules without exposing requests to this extension.
+import { MAX_EXCLUDED_SITES } from './settings.js';
 
 export const ENTRA_HOSTS = ['login.microsoftonline.com', 'login.microsoft.com', 'login.windows.net', 'sts.windows.net'];
-
-// Tenant path segments that only accept personal Microsoft accounts; left alone.
-const MSA_TENANTS = 'consumers|9188040d-6c67-4c5b-b112-36a304b66dad';
-// Matches a sign-in that returns to (redirect_uri, redirect%5Furi, wreply) the given host pattern or a subdomain.
-// The subdomain part only allows host name characters, so a path such as /x.live.com/ doesn't match.
-const returnsTo = (host) => `(uri|wreply)=https?(:|%3a)(/|%2f)(/|%2f)([-a-z0-9.]*\\.)?${host}([/:?&#%]|$)`;
-// Personal-account sites that sign in through the work-account endpoints (/common).
-const CONSUMER_SITES = '(live\\.com|account\\.microsoft\\.com)';
-const MAX_SITE_RULES = 900; // Edge allows 1000 regex rules in total
-
-const ALLOW = 10;       // allow rules beat every redirect
-const SKIP_PICKER = 2;  // beats the plain hint rule on the same URL (no fall-through inside a matcher)
-const HINT = 1;
-
 export const ORIGINS = ENTRA_HOSTS.map((host) => `https://${host}/*`);
-
+const AUTHORIZE = '^https://[^/]+/[^/?#]+/oauth2/(v2\\.0/)?authorize\\?';
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const returnsTo = (host) => `(uri|wreply)=https?(:|%3a)(/|%2f)(/|%2f)([-a-z0-9.]*\\.)?${host}([/:?&#%]|$)`;
 
-// settings: effective settings plus the resolved work-account `email`.
-// Regex rules are matched case-insensitively (the DNR default).
-export function buildRules(s) {
-  const resourceTypes = s.includeFrames ? ['main_frame', 'sub_frame'] : ['main_frame'];
+// Query transforms use exact, case-sensitive keys. Guard nonstandard capitalization rather than
+// add a second hint. Each alternative requires the first uppercase letter at this position.
+const uppercaseKey = (key) => [...key].flatMap((c, i) => /[a-z]/.test(c) ?
+  [key.slice(0, i) + c.toUpperCase() + key.slice(i + 1).replace(/[a-z]/g, (v) => `[${v}${v.toUpperCase()}]`)] : []).join('|');
+
+export function buildRules({ email, excludedSites = [] }) {
+  if (excludedSites.length > MAX_EXCLUDED_SITES) throw new Error(`Use at most ${MAX_EXCLUDED_SITES} excluded sites.`);
   const rules = [];
-  const add = (priority, action, condition) =>
-    rules.push({ id: rules.length + 1, priority, action, condition: { requestDomains: ENTRA_HOSTS, resourceTypes, ...condition } });
-  const allow = (condition) => add(ALLOW, { type: 'allow' }, condition);
-  // Chromium URL-encodes the value itself, and replaces an existing (even empty) login_hint in place.
-  // In "always" mode a site's username hint is replaced too, so Microsoft gets only one account.
-  const hint = (removeParams = []) => {
-    if (s.hintMode === 'always') removeParams = [...removeParams, 'username'];
-    return {
-      type: 'redirect',
-      redirect: { transform: { queryTransform: { ...(removeParams.length && { removeParams }), addOrReplaceParams: [{ key: 'login_hint', value: s.email }] } } },
-    };
-  };
+  const add = (priority, action, condition) => rules.push({ id: rules.length + 1, priority, action,
+    condition: { requestDomains: ENTRA_HOSTS, resourceTypes: ['main_frame', 'sub_frame'], ...condition } });
+  const allow = (condition) => add(10, { type: 'allow' }, condition);
+  const hint = (prompt) => ({ type: 'redirect', redirect: { transform: { queryTransform: {
+    // Remove ALL old account hints before adding one; duplicate hints can make Entra reject a request.
+    removeParams: ['login_hint', 'username', 'domain_hint', ...(prompt !== undefined ? ['prompt'] : [])],
+    addOrReplaceParams: [...(prompt ? [{ key: 'prompt', value: prompt }] : []), { key: 'login_hint', value: email }],
+  } } } });
 
-  // Leave the request alone if the site already chose an account (sid + login_hint is an error)...
-  const chosen = ['sid', 'id_token_hint', ...(s.hintMode === 'always' ? [] : ['login_hint', 'username'])];
-  allow({ regexFilter: `[?&](${chosen.join('|')})=[^&#]` });
-  // ...uses an encoded login_hint key we can't replace in place (a second login_hint is an error), or is a sign-up.
-  allow({ regexFilter: '[?&](login%5fhint|prompt=create)' });
-  if (s.accountPicker === 'site') allow({ regexFilter: '[?&]prompt=select_account' });
-  // Keep an app's own hint in hidden-frame renewals, even in "always" mode, so an app never switches user silently.
-  if (s.hintMode === 'always') allow({ regexFilter: '[?&](login_hint|username)=[^&#]', resourceTypes: ['sub_frame'] });
-  // Personal-account sign-ins: personal-only endpoints, requests asking for a personal account, and
-  // consumer sites such as outlook.live.com (which use /common with prompt=select_account).
-  allow({ regexFilter: `^https://[^/]+/(${MSA_TENANTS})/` });
-  allow({ regexFilter: `[?&]domain_hint=consumers(&|#|$)|${returnsTo(CONSUMER_SITES)}` });
-  // Excluded sites: match where the sign-in returns to and the page that started it. One rule per site keeps
-  // each regex under Edge's 2 KB compiled-size limit, which fits host names up to about 60 characters;
-  // background.js drops longer ones and the initiator rule still covers them.
-  for (const site of s.excludedSites.slice(0, MAX_SITE_RULES)) allow({ regexFilter: returnsTo(escapeRegex(site)) });
-  if (s.excludedSites.length) allow({ initiatorDomains: s.excludedSites });
-
-  // OAuth / OpenID Connect sign-in (v1 and v2 endpoints, any tenant).
-  const authorize = '^https://[^/]+/[^/?#]+/oauth2/(v2\\.0/)?authorize\\?';
-  if (s.accountPicker !== 'site') {
-    // login_hint doesn't work together with prompt=select_account, so drop the prompt.
-    add(SKIP_PICKER, hint(['prompt']),
-      { requestMethods: ['get'], regexFilter: `${authorize}([^#]*&)?prompt=select_account(&|#|$)` });
+  // Session-bound renewals must not change principal mid-session. sid + login_hint can also fail.
+  allow({ regexFilter: '[?&](sid|id_token_hint)=[^&#]' });
+  allow({ regexFilter: '[?&](login_hint|username)=[^&#]', resourceTypes: ['sub_frame'] });
+  for (const key of ['login_hint', 'username', 'prompt', 'domain_hint']) {
+    allow({ regexFilter: `[?&](${uppercaseKey(key)})=`, isUrlFilterCaseSensitive: true });
   }
-  add(HINT, hint(), { requestMethods: ['get'], regexFilter: authorize });
-  // SAML and WS-Federation apps. SAML may POST; the internal 307 redirect keeps the body.
-  add(HINT, hint(), { requestMethods: ['get', 'post'], regexFilter: '^https://[^/]+/[^/?#]+/(saml2|wsfed)(\\?|$)' });
+  allow({ regexFilter: '[?&](login%5fhint|domain%5fhint|id%5ftoken%5fhint)=' });
+  allow({ regexFilter: '[?&]prompt=create(&|#|$)' });
+  // Consumer-only sign-ins are out of scope, including unusual encoded domain hints.
+  allow({ regexFilter: '^https://[^/]+/(consumers|9188040d-6c67-4c5b-b112-36a304b66dad)/' });
+  allow({ regexFilter: `[?&]domain_hint=consumers(&|#|$)|${returnsTo('(live\\.com|account\\.microsoft\\.com)')}` });
+  allow({ regexFilter: '[?&]domain_hint=[^&#]*%' });
+  for (const site of excludedSites) allow({ regexFilter: returnsTo(escapeRegex(site)) });
+  if (excludedSites.length) allow({ initiatorDomains: excludedSites });
+
+  // Remove only the account selector, never required login or consent. Support normal URL space encodings.
+  const sep = '(\\+|%20)';
+  const picker = 'select(_|%5f)account';
+  add(2, hint(''), { requestMethods: ['get'], regexFilter: `${AUTHORIZE}([^#]*&)?prompt=${picker}(&|#|$)` });
+  for (const required of ['login', 'consent']) {
+    // Separate orders keep each compiled regex below Edge's 2 KB limit.
+    for (const values of [`${picker}${sep}${required}`, `${required}${sep}${picker}`]) {
+      add(2, hint(required), { requestMethods: ['get'],
+        regexFilter: `${AUTHORIZE}([^#]*&)?prompt=${values}(&|#|$)` });
+    }
+  }
+  add(1, hint(), { requestMethods: ['get'], regexFilter: AUTHORIZE });
+  // SAML POST uses an internal 307 redirect, preserving the body. Token/credential POSTs are not matched.
+  add(1, hint(), { requestMethods: ['get', 'post'], regexFilter: '^https://[^/]+/[^/?#]+/(saml2|wsfed)(\\?|$)' });
   return rules;
 }
