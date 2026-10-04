@@ -2,6 +2,7 @@ import { buildRules, ORIGINS } from './rules.js';
 import { loadSettings, normalizeEmail, describe } from './settings.js';
 
 const RESYNC_MINUTES = 5;
+const REALM_MAX_AGE = 24 * 60 * 60_000;
 const ICONS = {
   on: { 16: '/icons/icon-16.png', 32: '/icons/icon-32.png', 48: '/icons/icon-48.png', 128: '/icons/icon-128.png' },
   off: { 16: '/icons/icon-off-16.png', 32: '/icons/icon-off-32.png', 48: '/icons/icon-off-48.png', 128: '/icons/icon-off-128.png' },
@@ -9,12 +10,22 @@ const ICONS = {
 
 // Every event funnels into one queued, idempotent sync so overlapping events can't race.
 let queue = Promise.resolve();
+let revision = 0;
+let initialized = false;
 function sync() {
-  queue = queue.then(doSync).catch(fail).catch(() => {}); // never leave the queue rejected
+  const requested = ++revision;
+  queue = queue.then(() => doSync(requested)).catch(fail).catch(() => {}); // never leave the queue rejected
   return queue;
 }
 
-async function doSync() {
+async function doSync(requested) {
+  if (requested !== revision) return; // newer queued settings supersede this refresh
+  if (!initialized) {
+    await chrome.storage.local.remove(['realms', 'hintMode', 'accountPicker', 'includeFrames']);
+    // Recreating an existing alarm would postpone the next profile refresh on every worker wake.
+    if (!await chrome.alarms.get('resync')) await chrome.alarms.create('resync', { periodInMinutes: RESYNC_MINUTES });
+    initialized = true;
+  }
   const { settings, managed } = await loadSettings();
   const { pausedUntil = 0 } = await chrome.storage.local.get('pausedUntil');
   const email = await getProfileEmail();
@@ -39,16 +50,17 @@ async function doSync() {
 
   const rules = state === 'active' ? await supported(buildRules({ ...settings, email })) : [];
   // A profile change during discovery must not reinstall the identity we just discarded.
-  if (await getProfileEmail() !== email) {
+  const latestEmail = await getProfileEmail();
+  if (requested !== revision || latestEmail !== email) {
     await setRules([]);
-    sync();
+    if (latestEmail !== email) sync();
     return;
   }
   await setRules(rules);
-  if (paused) chrome.alarms.create('resume', { when: pausedUntil });
-  else chrome.alarms.clear('resume');
-  if (state === 'checking') chrome.alarms.create('retry', { delayInMinutes: 1 });
-  else chrome.alarms.clear('retry');
+  await Promise.all([
+    paused ? chrome.alarms.create('resume', { when: pausedUntil }) : chrome.alarms.clear('resume'),
+    state === 'checking' ? chrome.alarms.create('retry', { delayInMinutes: 1 }) : chrome.alarms.clear('retry'),
+  ]);
 
   await publish({
     state, enabled: settings.enabled, email, pausedUntil,
@@ -67,9 +79,14 @@ async function fail(error) {
   }
 }
 
+// Browser APIs reorder object keys and rules; compare content so an unchanged sync stays a no-op.
+const rulesKey = (rules) => JSON.stringify([...rules].sort((a, b) => a.id - b.id), (_key, value) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]])) : value);
+
 async function setRules(rules) {
   const current = await chrome.declarativeNetRequest.getDynamicRules();
-  if (JSON.stringify(current) === JSON.stringify(rules)) return;
+  if (rulesKey(current) === rulesKey(rules)) return;
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: current.map((r) => r.id), addRules: rules });
 }
 
@@ -89,7 +106,10 @@ async function getProfileEmail() {
 // disable rules until discovery succeeds. Organization-approved allowedDomains bypass this lookup.
 async function accountKind(domain) {
   const { realm } = await chrome.storage.local.get('realm');
-  if (realm?.domain === domain) return realm.kind;
+  const age = Date.now() - realm?.checkedAt;
+  if (realm?.domain === domain && ['work', 'personal'].includes(realm.kind) && age >= 0 && age < REALM_MAX_AGE) return realm.kind;
+  // Missing, expired or malformed discovery must not leave previously installed rules active.
+  await setRules([]);
   try {
     const url = `https://login.microsoftonline.com/common/userrealm/?user=${encodeURIComponent(`user@${domain}`)}&api-version=2.1`;
     const res = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
@@ -98,7 +118,7 @@ async function accountKind(domain) {
     const personal = data.ConsumerDomain === true || data.IsViral === true || data.NameSpaceType === 'Unknown' ||
       /(^|\.)live\.com$/i.test(data.DomainName ?? '');
     const kind = personal ? 'personal' : 'work';
-    await chrome.storage.local.set({ realm: { domain, kind } });
+    await chrome.storage.local.set({ realm: { domain, kind, checkedAt: Date.now() } });
     return kind;
   } catch {
     return 'checking'; // offline, captive portal, proxy: retried by the 'retry' alarm
@@ -144,9 +164,5 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   return true;
 });
 
-// Remove the old per-email cache and retired behaviour preferences on upgrade.
-chrome.storage.local.remove(['realms', 'hintMode', 'accountPicker', 'includeFrames']);
-
 // The profile account can change without an event we can rely on, so also re-check periodically.
-chrome.alarms.create('resync', { periodInMinutes: RESYNC_MINUTES });
 sync();

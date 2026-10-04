@@ -4,6 +4,9 @@ Windows Registry Editor Version 5.00
 ; Replace REPLACE_WITH_EXTENSION_ID with the ID from edge://extensions, delete what you don't want enforced,
 ; import, then open edge://policy and click "Reload policies". The two lists at the end are commented out
 ; examples: remove the leading semicolons to use them. allowedDomains stops the extension for every other domain.
+; Import replaces this extension's entire policy, including previous list entries.
+
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy]
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\REPLACE_WITH_EXTENSION_ID\policy]
 "enabled"=dword:00000001

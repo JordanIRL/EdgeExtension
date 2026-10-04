@@ -1,11 +1,12 @@
-import { loadSettings, cleanHosts, clearSignInSessions, MAX_EXCLUDED_SITES } from './settings.js';
+import { loadSettings, parseExcludedSites, clearSignInSessions } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const save = (values) => chrome.storage.local.set(values);
 
 async function init() {
+  $('excludedSites').disabled = true;
   let settings, managed;
-  try { ({ settings, managed } = await loadSettings()); }
+  try { ({ settings, managed } = await loadSettings({ validateExcludedSites: false })); }
   catch (e) {
     $('sitesError').textContent = e.message;
     $('sitesError').hidden = false;
@@ -13,8 +14,12 @@ async function init() {
     return;
   }
   $('excludedSites').disabled = managed.includes('excludedSites');
+  const { error } = parseExcludedSites(settings.excludedSites);
+  $('sitesError').hidden = !error;
+  $('sitesError').textContent = error;
   document.querySelectorAll('.locked').forEach((el) => el.classList.remove('locked'));
-  $('excludedSites').value = settings.excludedSites.join('\n');
+  $('excludedSites').value = Array.isArray(settings.excludedSites) ? settings.excludedSites.join('\n') :
+    String(settings.excludedSites ?? '');
 
   for (const key of managed) {
     const el = $(key);
@@ -32,13 +37,18 @@ async function renderStatus() {
   $('profileEmail').textContent = status.email || 'Not signed in to this Edge profile';
 }
 
-$('excludedSites').addEventListener('change', (e) => {
-  const { valid, invalid } = cleanHosts(e.target.value.split(/[\s,;]+/));
-  const error = invalid.length ? `Not a site name: ${invalid.join(', ')}` :
-    valid.length > MAX_EXCLUDED_SITES ? `Use at most ${MAX_EXCLUDED_SITES} excluded sites.` : '';
+$('excludedSites').addEventListener('change', async (e) => {
+  if (e.target.disabled) return;
+  const { valid, error } = parseExcludedSites(e.target.value.split(/[\s,;]+/));
   $('sitesError').hidden = !error;
   $('sitesError').textContent = error;
-  if (!error) save({ excludedSites: valid });
+  if (!error) {
+    try { await save({ excludedSites: valid }); }
+    catch (error) {
+      $('sitesError').textContent = `Couldn’t save excluded sites: ${error?.message ?? error}`;
+      $('sitesError').hidden = false;
+    }
+  }
 });
 
 $('clearSessions').addEventListener('click', clearSignInSessions);

@@ -7,18 +7,20 @@ set -e
 cd "$(dirname "$0")/.."
 JSC=/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc
 PY=${PYTHON:-python3}
+NODE=${NODE:-node}
 
 if [ -x "$JSC" ]; then
   OUT=$("$JSC" -m tests/rules.test.js) || { echo "$OUT" | grep -v '^REGEX '; exit 1; }
-elif command -v node >/dev/null; then
-  OUT=$(node tests/rules.test.js) || { echo "$OUT" | grep -v '^REGEX '; exit 1; }
+elif command -v "$NODE" >/dev/null; then
+  OUT=$("$NODE" tests/rules.test.js) || { echo "$OUT" | grep -v '^REGEX '; exit 1; }
 else
   echo "Need JavaScriptCore (macOS) or Node to run the tests"; exit 1
 fi
 echo "$OUT" | grep -v '^REGEX '
 echo "$OUT" | sed -n 's/^REGEX //p' | "$PY" tests/check_static.py
-if command -v node >/dev/null; then
-  node tests/background.test.mjs
+if command -v "$NODE" >/dev/null; then
+  "$NODE" tests/background.test.mjs
+  "$NODE" tests/ui.test.mjs
 else
-  echo 'Background lifecycle checks: skipped (run node tests/background.test.mjs with Node 22+)'
+  echo 'Worker and UI checks: skipped (run the .mjs tests with Node 22+)'
 fi

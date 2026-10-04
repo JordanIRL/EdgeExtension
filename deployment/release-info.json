@@ -1,0 +1,12 @@
+{
+  "name": "Use My Profile Account",
+  "version": "1.2.1",
+  "builtDate": "2026-10-04",
+  "privateExtensionId": "lbohpojbnjhjpobcgkknhccfmahnfplp",
+  "privateCrxFileName": "UseMyProfileAccount.crx",
+  "crxFormat": 3,
+  "crxSha256": "8123be5c0cab5b0e12c1307352b6046a93429994362008fdc51eaafa32a8c0d4",
+  "runtimeZipSha256": "ebf66134c169082f2780def06ca33d1d07ae09cdcc3256306c66b78bd84b7ce7",
+  "minimumEdgeVersion": "120",
+  "runtimeFileCount": 19
+}

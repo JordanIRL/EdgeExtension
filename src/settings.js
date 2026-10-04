@@ -16,7 +16,8 @@ export const clearSignInSessions = () => chrome.tabs.create({ url: SIGN_OUT_URL 
 // Only settable by policy.
 const POLICY_DEFAULTS = { allowPause: true, allowedDomains: [] };
 
-export async function loadSettings() {
+// The options editor needs the original list so invalid stored entries can be repaired.
+export async function loadSettings({ validateExcludedSites = true } = {}) {
   const local = await chrome.storage.local.get(DEFAULTS);
   let policy = {};
   try {
@@ -28,8 +29,11 @@ export async function loadSettings() {
   const keys = { ...DEFAULTS, ...POLICY_DEFAULTS };
   policy = Object.fromEntries(Object.entries(policy).filter(([key]) => Object.hasOwn(keys, key)));
   const settings = { ...keys, ...local, ...policy };
-  settings.excludedSites = cleanHosts(settings.excludedSites).valid;
-  if (settings.excludedSites.length > MAX_EXCLUDED_SITES) throw new Error(`Use at most ${MAX_EXCLUDED_SITES} excluded sites.`);
+  if (validateExcludedSites) {
+    const { valid, error } = parseExcludedSites(settings.excludedSites);
+    if (error) throw new Error(error);
+    settings.excludedSites = valid;
+  }
   // Any allowedDomains entry, even an invalid or blank one, restricts the extension to the valid entries.
   settings.restrictDomains = Array.isArray(settings.allowedDomains) && settings.allowedDomains.length > 0;
   settings.allowedDomains = cleanHosts(settings.allowedDomains).valid;
@@ -59,6 +63,14 @@ export function cleanHosts(list) {
     else if (!valid.includes(host)) valid.push(host);
   }
   return { valid, invalid };
+}
+
+export function parseExcludedSites(list) {
+  const { valid, invalid } = cleanHosts(list);
+  const error = !Array.isArray(list) ? 'Excluded sites must be a list of site names.' :
+    invalid.length ? `Not a site name: ${invalid.join(', ')}` :
+    valid.length > MAX_EXCLUDED_SITES ? `Use at most ${MAX_EXCLUDED_SITES} excluded sites.` : '';
+  return { valid, error };
 }
 
 const time = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });

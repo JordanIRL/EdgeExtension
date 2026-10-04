@@ -1,6 +1,6 @@
 # Privacy policy – Use My Profile Account
 
-Last updated: 2 October 2026
+Last updated: 4 October 2026
 
 Use My Profile Account is a Microsoft Edge extension. It has no servers, no analytics and no telemetry. The publisher receives no data from it.
 
@@ -12,7 +12,7 @@ Use My Profile Account is a Microsoft Edge extension. It has no servers, no anal
 ## Where your data goes
 
 - **Microsoft sign-in requests.** Your email is added as the sign-in hint (`login_hint`) to supported sign-in requests your browser is already making to `login.microsoftonline.com`, `login.microsoft.com`, `login.windows.net` and `sts.windows.net`. This includes background sign-ins that do not already identify an account/session. Microsoft uses the hint to help choose the account.
-- **Account-type check.** To confirm the account is a work or school account, the extension sends only your email's domain, as `user@<your domain>`, to `https://login.microsoftonline.com/common/userrealm/`, without cookies. It asks again only when your account's domain changes. If your organization limits the extension to its own domains (`allowedDomains`), no check is made.
+- **Work-domain check.** To check whether your account's domain is eligible, the extension sends only your email's domain, as `user@<your domain>`, to `https://login.microsoftonline.com/common/userrealm/`, without cookies. A successful result is reused for up to 24 hours; domain changes, expired results and failed checks require another request. This check cannot prove the account's type. If your organization limits the extension to its own approved work domains (`allowedDomains`), no check is made.
 - **Clear sign-in sessions** opens Microsoft's sign-out page (`https://login.microsoftonline.com/common/oauth2/v2.0/logout`) in a new tab, only when you click it. The extension adds nothing to that request.
 - Nothing is sent to other destinations by the extension's code. It doesn't read pages, cookies or what you type, and it doesn't see sign-in request contents: Edge applies its rules. These statements describe this build, not every capability a future update could have; the host permissions permit access to the four identity hosts.
 

@@ -1,0 +1,8 @@
+{
+  "lbohpojbnjhjpobcgkknhccfmahnfplp": {
+    "installation_mode": "force_installed",
+    "update_url": "https://REPLACE_WITH_HTTPS_HOST/use-my-profile-account/updates.xml",
+    "override_update_url": true,
+    "minimum_version_required": "1.2.1"
+  }
+}

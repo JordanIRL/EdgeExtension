@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TEMPLATE: replace the HTTPS host or use scripts/Configure-Hosting.ps1 before publishing. -->
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="lbohpojbnjhjpobcgkknhccfmahnfplp">
+    <updatecheck codebase="https://REPLACE_WITH_HTTPS_HOST/use-my-profile-account/UseMyProfileAccount.crx" version="1.2.1" />
+  </app>
+</gupdate>

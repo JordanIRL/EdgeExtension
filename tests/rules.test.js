@@ -61,6 +61,11 @@ for (const key of ['LOGIN_HINT', 'Login_Hint', 'login_Hint', 'USERNAME', 'UserNa
 run('sign-up (prompt=create) left alone', {}, `${V2}&prompt=create`, 'same');
 run('prompt=login still hinted', {}, `${V2}&prompt=login`, has(HINT, 'prompt=login'));
 run('prompt=none (silent) hinted', {}, `${V2}&prompt=none`, has(HINT, 'prompt=none'));
+for (const key of ['login_hint', 'username']) {
+  for (const params of [`prompt=none&${key}=bob`, `${key}=bob&prompt=none`]) {
+    run(`account-specific silent popup kept (${params})`, {}, `${V2}&${params}`, 'same');
+  }
+}
 
 // --- Account picker (Outlook on the web sends prompt=select_account) ---
 const OWA = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&prompt=select_account&state=x';
@@ -72,6 +77,11 @@ run('retired picker setting cannot show picker', { accountPicker: 'site' }, OWA,
 run('select_account + empty hint', {}, `${OWA}&login_hint=`, (u) => !u.includes('prompt=') && count(u, 'login_hint') === 1 && u.includes(HINT));
 run('select_account in always mode', { hintMode: 'always' }, `${OWA}&login_hint=bob`, (u) => !u.includes('prompt=') && u.includes(HINT) && !u.includes('bob'));
 run('other prompt value untouched', {}, `${V2}&prompt=consent`, has(HINT, 'prompt=consent'));
+for (const required of ['login', 'consent', 'create']) {
+  for (const params of [`prompt=select_account&prompt=${required}`, `prompt=${required}&prompt=select_account`]) {
+    run(`ambiguous duplicate prompts kept (${params})`, {}, `${V2}&${params}`, 'same');
+  }
+}
 for (const required of ['login', 'consent']) {
   for (const separator of ['+', '%20']) {
     for (const values of [`${required}${separator}select_account`, `select_account${separator}${required}`]) {
@@ -86,6 +96,13 @@ run('encoded consumer hint untouched', {}, `${V2}&domain_hint=%63onsumers`, 'sam
 const CONSUMER_OWA = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20&redirect_uri=https%3A%2F%2Foutlook.live.com%2Fmail%2F&prompt=select_account';
 run('consumer Outlook (outlook.live.com) untouched', {}, CONSUMER_OWA, 'same');
 run('consumer OneDrive return untouched', {}, `${V2}&redirect_uri=https%3A%2F%2Fonedrive.live.com%2F`, 'same');
+run('consumer return with encoded dots untouched', {}, `${V2}&redirect_uri=https%3A%2F%2Foutlook%2Elive%2Ecom%2F`, 'same');
+run('consumer return with encoded hostname letter untouched', {}, `${V2}&redirect_uri=https%3A%2F%2Foutlook.%6cive.com%2F`, 'same');
+run('consumer return with trailing hostname dot untouched', {}, `${V2}&redirect_uri=https%3A%2F%2Foutlook.live.com.%2F`, 'same');
+for (const callback of ['https:%2F%2Foutlook.live.com%2F', 'https:/%2Foutlook.live.com%2F',
+  'https%3A//outlook.live.com/', 'https%3A/%2Foutlook.live.com%2F', 'https%3A%2F/outlook.live.com/']) {
+  run(`mixed callback authority encoding kept (${callback})`, {}, `${V2}&redirect_uri=${callback}`, 'same');
+}
 run('work Outlook still hinted', {}, OWA.replace('client_id=9199bf20', 'client_id=9199bf20&redirect_uri=https%3A%2F%2Foutlook.office.com%2Fmail%2F'), has(HINT));
 run('domain_hint=consumers untouched', {}, `${V2}&domain_hint=consumers`, 'same');
 run('domain_hint=organizations still hinted', {}, `${V2}&domain_hint=organizations`, has(HINT));
@@ -128,6 +145,9 @@ run('SAML redirect binding', {}, `${SAML}?SAMLRequest=fZJb&RelayState=x`, has(HI
 run('SAML POST binding gets query', {}, SAML, (u) => u === `${SAML}?${HINT}`, { method: 'post' });
 run('default: WS-Fed hint replaced', {}, `https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0&login_hint=bob`,
   (u) => u.includes(HINT) && !u.includes('bob') && count(u, 'login_hint') === 1);
+for (const action of ['wsignout1.0', 'wsignoutcleanup1.0']) {
+  run(`WS-Fed ${action} untouched`, {}, `https://login.microsoftonline.com/common/wsfed?wa=${action}`, 'same');
+}
 
 run('other clouds untouched', {}, 'https://login.microsoftonline.us/common/oauth2/v2.0/authorize?client_id=x', 'same');
 
@@ -136,6 +156,8 @@ const EX = { excludedSites: ['dev.azure.com', 'contoso.sharepoint.com'] };
 const withRedirect = (r) => `${V2}&redirect_uri=${encodeURIComponent(r)}`;
 run('excluded by redirect_uri', EX, withRedirect('https://dev.azure.com/'), 'same');
 run('excluded by redirect_uri subdomain', EX, withRedirect('https://app.dev.azure.com/cb'), 'same');
+run('excluded by redirect_uri encoded hostname dots', EX, `${V2}&redirect_uri=https%3A%2F%2Fapp%2Edev%2Eazure%2Ecom%2Fcb`, 'same');
+run('excluded by redirect_uri trailing hostname dot', EX, withRedirect('https://dev.azure.com./cb'), 'same');
 run('excluded by redirect%5Furi (SharePoint)', EX, `${V1}&redirect%5Furi=https%3A%2F%2Fcontoso.sharepoint.com%2F_forms%2Fdefault.aspx`, 'same');
 run('excluded by redirect_uri with port', EX, withRedirect('https://dev.azure.com:443/x'), 'same');
 run('excluded by initiator', EX, V2, 'same', { initiator: 'https://contoso.sharepoint.com' });
@@ -150,6 +172,14 @@ run('excluded by WS-Fed wreply', EX, 'https://login.microsoftonline.com/common/w
 run('not excluded: host prefix only', EX, withRedirect('https://olddev.azure.com/'), has(HINT));
 run('excluded: query right after host', EX, withRedirect('https://dev.azure.com?x=1'), 'same');
 run('not excluded: longer TLD', EX, withRedirect('https://dev.azure.company/'), has(HINT));
+run('unsupported encoded hostname suffix left alone', EX, `${V2}&redirect_uri=https%3A%2F%2Fdev.azure.com%2Eevil.test%2F`, 'same');
+run('encoded callback path still hinted', EX, `${V2}&redirect_uri=https%3A%2F%2Fcontoso.com%2F%64ocs`, has(HINT));
+run('unencoded callback with encoded path still hinted', EX, `${V2}&redirect_uri=https://contoso.com/%64ocs`, has(HINT));
+run('unencoded callback with encoded fragment still hinted', EX, `${V2}&redirect_uri=https://contoso.com%23fragment`, has(HINT));
+run('encoded callback with encoded query still hinted', EX, `${V2}&redirect_uri=https%3A%2F%2Fcontoso.com%3Fx%3D1`, has(HINT));
+run('work callback with encoded key kept', {}, `${V2}&redirect%5Furi=https%3A%2F%2Fcontoso.com%2F`, 'same');
+run('not excluded: callback-like text inside a value', EX, `${V2}&state=uri=https%3A%2F%2Fdev.azure.com%2F`, has(HINT));
+run('not excluded: unrelated uri-suffixed parameter', EX, `${V2}&fakeuri=https%3A%2F%2Fdev.azure.com%2F`, has(HINT));
 {
   const many = Array.from({ length: MAX_EXCLUDED_SITES }, (_, i) => `site${i}.example.com`);
   const rules = buildRules({ ...DEFAULTS, email: MARY, excludedSites: many });
@@ -201,7 +231,7 @@ check('cleanHost rejects', ['localhost', 'a b.com', 'contoso', '', '.com', '-a.e
 }
 check('cleanHosts tolerates non-arrays', cleanHosts('dev.azure.com').valid.length === 0);
 
-// A long excluded host, to check the per-rule regex size limit in the RE2 step (longer ones are dropped at runtime).
+// A long excluded host, to check the per-rule regex size limit; unsupported rules disable the whole ruleset.
 rulesFor({ excludedSites: [`${'a'.repeat(25)}.${'b'.repeat(22)}.example.com`] }); // 60 characters
 
 log(`\n${passed} passed, ${failed} failed`);

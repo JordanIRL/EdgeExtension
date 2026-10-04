@@ -13,14 +13,14 @@
 #>
 
 # The ID shown on edge://extensions (Edge Add-ons assigns a different ID from an unpacked copy).
-$ExtensionId = 'REPLACE_WITH_EXTENSION_ID'
+$ExtensionId = 'lbohpojbnjhjpobcgkknhccfmahnfplp'
 
 # Set to $true to delete the policy instead (Intune platform scripts can't take parameters).
 $Remove = $false
 
 $Policy = [ordered]@{
-  # enabled         = $true
-  # allowPause      = $true
+  enabled           = $true
+  allowPause        = $true
   # excludedSites   = @('dev.azure.com')
   # allowedDomains  = @('contoso.com')   # only act for accounts in these domains
 }

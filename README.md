@@ -22,9 +22,9 @@ There are no account-selection settings: using the profile account and skipping 
 
 **This is an account-selection helper, not an identity-enforcement or single-sign-on security boundary.** Microsoft signs in silently only when an eligible session/token is available. Passwords, MFA, consent and Conditional Access can still require interaction. A hint cannot guarantee that Microsoft will never show a selector or let a user choose a different account. See [Microsoft's sign-in parameters](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc).
 
-A website already signed into another account stays signed in until its session ends or you sign out. Requests with `sid`/`id_token_hint`, and account-specific hidden-frame renewals, are deliberately unchanged: switching their identity mid-session could give a running application another account's tokens. Broker-based token acquisition that bypasses the sign-in page, desktop apps, and nonstandard encoded/capitalized account parameters are not controlled by this extension.
+A website already signed into another account stays signed in until its session ends or you sign out. Requests with `sid`/`id_token_hint`, account-specific hidden-frame renewals, and account-specific `prompt=none` requests in any frame are deliberately unchanged: switching their identity mid-session could give a running application another account's tokens. Broker-based token acquisition that bypasses the sign-in page, desktop apps, and nonstandard encoded/capitalized account parameters are not controlled by this extension. Duplicate prompts, encoded callback parameter names or hostnames, and mixed raw/encoded callback authority delimiters are also left unchanged.
 
-Work-domain discovery uses Microsoft's undocumented `userrealm` endpoint, sending only `user@<domain>` without cookies and retaining one domain result. It is a domain eligibility check, not proof that the profile account is an Entra account: a custom domain can have both account types. Failed or unrecognized responses leave the extension inactive. For an enterprise pilot, set `allowedDomains` to your approved work domains to avoid this lookup; that policy is an explicit trust decision, not account-type verification.
+Work-domain discovery uses Microsoft's undocumented `userrealm` endpoint, sending only `user@<domain>` without cookies and retaining one domain result, valid for up to 24 hours. It is a domain eligibility check, not proof that the profile account is an Entra account: a custom domain can have both account types. Failed or unrecognized responses leave the extension inactive. For an enterprise pilot, set `allowedDomains` to your approved work domains to avoid this lookup; that policy is an explicit trust decision, not account-type verification.
 
 ## Install and use
 
@@ -36,7 +36,7 @@ The popup shows which account will be suggested, not the account currently signe
 
 - **On/off** and **Pause 15 min** are troubleshooting escape hatches, not different sign-in modes.
 - **Clear sign-in sessions** opens Microsoft's [sign-out page](https://login.microsoftonline.com/common/oauth2/v2.0/logout). It does not sign out of the Edge profile or clear all cookies/cached tokens. Microsoft may ask which account to sign out; applications without single sign-out support need their own sign-out.
-- **Excluded sites** leave specified sign-ins alone. Leave blank for normal use. Up to 100 hosts, one per line; subdomains are included. Invalid entries are not saved; if Edge cannot compile an exclusion, all rules are disabled and the popup reports an error.
+- **Excluded sites** leave specified sign-ins alone. Leave blank for normal use. Up to 100 hosts, one per line; subdomains are included. Invalid edits are not saved. Invalid stored or managed lists, and exclusions Edge cannot compile, disable all rules and report an error. Settings keeps invalid local lists editable so you can repair them.
 
 ## Edge settings to check
 
@@ -61,13 +61,15 @@ Publish the package through [Edge Add-ons Partner Center](https://partner.micros
 
 Windows policy path: `HKLM\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\<extension ID>\policy`. Booleans are `REG_DWORD`; lists are subkeys containing numbered `REG_SZ` values. See [policy script](admin/Set-ExtensionPolicy.ps1) and [registry example](admin/example-policy.reg). Check [edge://policy](edge://policy). Remove retired behaviour policies during upgrade.
 
+For private CRX hosting with Intune or Microsoft 365's Edge management service, use the separate [internal deployment guide](deployment/README.md). That kit includes a signed CRX, HTTPS update templates and installation policies. Its signing key is retained separately and must never be deployed. The guide records the current Microsoft documentation conflict around Entra-only self-hosting and requires a pilot installation and update.
+
 The profile is rechecked at worker startup, relevant browser events, popup/settings opening, and every five minutes. Dynamic rules survive worker suspension. An unreported profile change can therefore leave rules stale until the next refresh; this is another reason not to treat the extension as an enforcement boundary. An observed identity change clears the old rules before domain discovery.
 
 ## Development and packaging
 
 Runtime source is plain JavaScript in `src/`; `manifest.json` and `schema.json` define permissions and managed settings. Rules have a pure unit-test model plus separate worker lifecycle/privacy tests.
 
-Run `sh tests/run.sh` (macOS with JavaScriptCore; Node 22+ runs the additional worker tests). On Windows with Node 22.7+: `node tests/rules.test.js` and `node tests/background.test.mjs`. Optional `google-re2` enables the static regex-size check. Real Edge must also accept every rule via `isRegexSupported`; none are silently discarded.
+Run `sh tests/run.sh` (macOS with JavaScriptCore; Node 22.7+ runs the additional worker and UI tests). Set `NODE=/path/to/node` when Node is outside your shell path. On Windows with Node 22.7+: `node tests/rules.test.js`, `node tests/background.test.mjs` and `node tests/ui.test.mjs`. Optional `google-re2` enables the static regex-size check. Real Edge must also accept every rule via `isRegexSupported`; none are silently discarded.
 
 After editing an unpacked extension, click **Reload** on [edge://extensions](edge://extensions). Restarting Edge alone can retain cached worker code. Use a fresh test profile when validating a changed build.
 

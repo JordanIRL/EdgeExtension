@@ -1,0 +1,7 @@
+{
+  "REPLACE_WITH_EDGE_ADDONS_EXTENSION_ID": {
+    "installation_mode": "force_installed",
+    "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+    "minimum_version_required": "1.2.1"
+  }
+}
